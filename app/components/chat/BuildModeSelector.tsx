@@ -9,8 +9,26 @@ const MODE_PLACEHOLDERS: Record<BuildMode, string> = {
   prototype: 'Describe the prototype you want to explore...',
 };
 
+/**
+ * Describes what the selected mode changes about the generation workflow.
+ *
+ * All modes run through the same artifact pipeline (files and shell commands
+ * executed in the browser), the mode steers what the assistant builds and
+ * which example the prompt starts from.
+ */
+const MODE_DESCRIPTIONS: Record<BuildMode, string> = {
+  website: 'Bolt will build a responsive website for you.',
+  slides: 'Bolt will build a slide deck with navigation for you.',
+  app: 'Bolt will build a full application with a working user flow.',
+  prototype: 'Bolt will build a quick interactive prototype to explore.',
+};
+
 export function getPlaceholderForMode(mode: BuildMode): string {
   return MODE_PLACEHOLDERS[mode];
+}
+
+export function getDescriptionForMode(mode: BuildMode): string {
+  return MODE_DESCRIPTIONS[mode];
 }
 
 /**
@@ -56,6 +74,8 @@ export function BuildModeSelector() {
             );
           })}
         </div>
+
+        <p className="mt-2 text-center text-xs text-bolt-elements-textTertiary">{getDescriptionForMode(mode)}</p>
       </div>
     </section>
   );

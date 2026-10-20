@@ -29,3 +29,6 @@ dist-ssr
 .wrangler
 _worker.bundle
 .vercel
+
+# Keep the example env file in the repository
+!.env.example

@@ -5,6 +5,7 @@ import { useAnimate } from 'framer-motion';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { cssTransition, toast, ToastContainer } from 'react-toastify';
 import { useMessageParser, usePromptEnhancer, useShortcuts, useSnapScroll } from '~/lib/hooks';
+import { parseError } from '~/lib/errors';
 import { DEFAULT_MODEL_ID } from '~/lib/models';
 import { useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
@@ -78,6 +79,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
    * state on the submit button and allow sending the prompt again.
    */
   const [hasError, setHasError] = useState(false);
+  const [errorMessage, setErrorMessage] = useState<string | undefined>(undefined);
 
   const { showChat } = useStore(chatStore);
 
@@ -96,8 +98,20 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
     body: requestBody,
     onError: (error) => {
       logger.error('Request failed\n\n', error);
+
+      /**
+       * The API responds with a `[code] message` body, which the AI SDK turns
+       * into the error message. Showing it verbatim gives the user an
+       * actionable reason instead of a generic failure.
+       */
+      const { code, message } = parseError(error instanceof Error ? error.message : undefined);
+
+      setErrorMessage(message);
       setHasError(true);
-      toast.error('There was an error processing your request');
+
+      toast.error(message);
+
+      logger.error(`Request failed with code ${code}`);
     },
     onFinish: () => {
       logger.debug('Finished streaming');
@@ -220,6 +234,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
     setInput('');
 
     setHasError(false);
+    setErrorMessage(undefined);
 
     resetEnhancer();
 
@@ -237,6 +252,11 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
       chatStarted={chatStarted}
       isStreaming={isLoading}
       hasError={hasError}
+      errorMessage={errorMessage}
+      onDismissError={() => {
+        setHasError(false);
+        setErrorMessage(undefined);
+      }}
       enhancingPrompt={enhancingPrompt}
       promptEnhanced={promptEnhanced}
       sendMessage={sendMessage}

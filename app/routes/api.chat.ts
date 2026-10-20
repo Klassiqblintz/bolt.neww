@@ -1,16 +1,16 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
+import { toAppError } from '~/lib/.server/llm/errors';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/.server/llm/prompts';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
 import SwitchableStream from '~/lib/.server/llm/switchable-stream';
+import { ERROR_CODES, formatError } from '~/lib/errors';
 
 export async function action(args: ActionFunctionArgs) {
   return chatAction(args);
 }
 
 async function chatAction({ context, request }: ActionFunctionArgs) {
-  const { messages, modelId } = await request.json<{ messages: Messages; modelId?: string }>();
-
   /**
    * `context.cloudflare` is only present when running on Cloudflare. On other
    * runtimes (e.g. the Node build used by Vercel) the API key is read from the
@@ -21,6 +21,18 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   const stream = new SwitchableStream();
 
   try {
+    const { messages, modelId } = await request.json<{ messages: Messages; modelId?: string }>();
+
+    if (!Array.isArray(messages) || messages.length === 0) {
+      return new Response(
+        formatError({
+          code: ERROR_CODES.INVALID_REQUEST,
+          message: 'The request did not contain any messages.',
+        }),
+        { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+      );
+    }
+
     const options: StreamingOptions = {
       toolChoice: 'none',
       onFinish: async ({ text: content, finishReason }) => {
@@ -56,11 +68,15 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       },
     });
   } catch (error) {
-    console.log(error);
+    console.error('Chat request failed\n\n', error);
 
-    throw new Response(null, {
-      status: 500,
-      statusText: 'Internal Server Error',
+    const appError = toAppError(error);
+
+    return new Response(formatError(appError), {
+      status: appError.code === ERROR_CODES.NOT_CONFIGURED ? 503 : 500,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+      },
     });
   }
 }

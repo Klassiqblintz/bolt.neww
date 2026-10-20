@@ -79,7 +79,6 @@ export function RecentlyViewed() {
         <div className="i-ph:clock-counter-clockwise text-base" />
         Recently viewed
       </div>
-
       {items.length === 0 ? (
         <div
           className={classNames(
@@ -133,6 +132,13 @@ export function RecentlyViewed() {
             </li>
           ))}
         </ul>
+      )}
+
+      {items.length > 0 && (
+        <p className="mt-3 text-xs text-bolt-elements-textTertiary">
+          Conversations are saved in this browser. Project files are rebuilt in the workspace when you continue a
+          conversation.
+        </p>
       )}
     </section>
   );

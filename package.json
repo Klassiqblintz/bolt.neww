@@ -10,6 +10,7 @@
     "deploy": "npm run build && wrangler pages deploy",
     "build": "remix vite:build",
     "dev": "remix vite:dev",
+    "dev:local": "node --env-file=.env node_modules/@remix-run/dev/dist/cli.js vite:dev",
     "test": "vitest --run",
     "test:watch": "vitest",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",

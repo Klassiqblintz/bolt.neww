@@ -25,6 +25,8 @@ interface BaseChatProps {
   chatStarted?: boolean;
   isStreaming?: boolean;
   hasError?: boolean;
+  errorMessage?: string;
+  onDismissError?: () => void;
   messages?: Message[];
   enhancingPrompt?: boolean;
   promptEnhanced?: boolean;
@@ -47,6 +49,8 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       chatStarted = false,
       isStreaming = false,
       hasError = false,
+      errorMessage,
+      onDismissError,
       enhancingPrompt = false,
       promptEnhanced = false,
       messages,
@@ -129,6 +133,24 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     'shadow-sm border border-bolt-elements-borderColor bg-bolt-elements-prompt-background backdrop-filter backdrop-blur-[8px] rounded-2xl sm:rounded-3xl overflow-hidden',
                   )}
                 >
+                  {errorMessage && (
+                    <div
+                      role="alert"
+                      className="flex items-start gap-2 px-4 sm:px-5 pt-4 text-sm text-bolt-elements-icon-error"
+                    >
+                      <div className="i-ph:warning-circle-bold text-base shrink-0 mt-px" />
+                      <span className="flex-1">{errorMessage}</span>
+                      <button
+                        type="button"
+                        className="shrink-0 opacity-70 hover:opacity-100 transition-opacity duration-150"
+                        title="Dismiss"
+                        aria-label="Dismiss error"
+                        onClick={onDismissError}
+                      >
+                        <div className="i-ph:x text-base" />
+                      </button>
+                    </div>
+                  )}
                   <textarea
                     ref={textareaRef}
                     className="w-full pl-4 sm:pl-5 pt-4 sm:pt-5 pr-16 pb-2 focus:outline-none resize-none text-md sm:text-lg text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent"

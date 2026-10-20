@@ -1,6 +1,8 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { StreamingTextResponse, parseStreamPart } from 'ai';
+import { toAppError } from '~/lib/.server/llm/errors';
 import { streamText } from '~/lib/.server/llm/stream-text';
+import { ERROR_CODES, formatError } from '~/lib/errors';
 import { stripIndents } from '~/utils/stripIndent';
 
 const encoder = new TextEncoder();
@@ -11,8 +13,6 @@ export async function action(args: ActionFunctionArgs) {
 }
 
 async function enhancerAction({ context, request }: ActionFunctionArgs) {
-  const { message } = await request.json<{ message: string }>();
-
   /**
    * `context.cloudflare` is only present when running on Cloudflare. On other
    * runtimes (e.g. the Node build used by Vercel) the API key is read from the
@@ -21,6 +21,18 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
   const env = context.cloudflare?.env ?? ({} as Env);
 
   try {
+    const { message, modelId } = await request.json<{ message: string; modelId?: string }>();
+
+    if (typeof message !== 'string' || message.trim().length === 0) {
+      return new Response(
+        formatError({
+          code: ERROR_CODES.INVALID_REQUEST,
+          message: 'There is no prompt to enhance.',
+        }),
+        { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+      );
+    }
+
     const result = await streamText(
       [
         {
@@ -37,6 +49,7 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
         },
       ],
       env,
+      modelId,
     );
 
     const transformStream = new TransformStream({
@@ -57,11 +70,15 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
 
     return new StreamingTextResponse(transformedStream);
   } catch (error) {
-    console.log(error);
+    console.error('Prompt enhancement failed\n\n', error);
 
-    throw new Response(null, {
-      status: 500,
-      statusText: 'Internal Server Error',
+    const appError = toAppError(error);
+
+    return new Response(formatError(appError), {
+      status: appError.code === ERROR_CODES.NOT_CONFIGURED ? 503 : 500,
+      headers: {
+        'Content-Type': 'text/plain; charset=utf-8',
+      },
     });
   }
 }
