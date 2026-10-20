@@ -92,7 +92,10 @@ export class FilesStore {
 
       const oldContent = this.getFile(filePath)?.content;
 
-      if (!oldContent) {
+      /**
+       * An empty file is valid, so only a missing file is an error here.
+       */
+      if (oldContent === undefined) {
         unreachable('Expected content to be defined');
       }
 
