@@ -74,6 +74,37 @@ describe('POST /api/chat', () => {
     expect(code).toBe(ERROR_CODES.INVALID_REQUEST);
   });
 
+  it('passes the selected model on to the provider', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-api03-test-key';
+
+    let requestedBody = '';
+
+    const fetchStub = vi.fn().mockImplementation(async (_url: unknown, init: { body?: string }) => {
+      requestedBody = init.body ?? '';
+
+      return new Response(
+        'data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-3-opus-20240229","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}}\n\ndata: {"type":"message_stop"}\n\n',
+        { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+      );
+    });
+
+    vi.stubGlobal('fetch', fetchStub);
+
+    await chatAction({
+      context,
+      request: chatRequest({
+        messages: [{ role: 'user', content: 'hello' }],
+        modelId: 'claude-3-opus-20240229',
+      }),
+      params: {},
+    } as never);
+
+    expect(requestedBody).toContain('claude-3-opus-20240229');
+    expect(requestedBody).not.toContain('claude-3-5-sonnet-20240620');
+
+    vi.unstubAllGlobals();
+  });
+
   it('never leaks the provider key in the error body', async () => {
     process.env.ANTHROPIC_API_KEY = 'sk-ant-api03-should-never-appear';
 
