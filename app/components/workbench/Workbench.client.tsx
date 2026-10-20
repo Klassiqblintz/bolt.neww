@@ -114,9 +114,12 @@ export const Workbench = memo(({ chatStarted, isStreaming }: WorkspaceProps) => 
               'left-[var(--workbench-left)]': showWorkbench,
               'left-[100%]': !showWorkbench,
             },
+
+            // on small screens the workbench covers the viewport below the header
+            'lt-lg:top-[var(--header-height)] lt-lg:bottom-0 lt-lg:mr-0',
           )}
         >
-          <div className="absolute inset-0 px-6">
+          <div className="absolute inset-0 px-6 lt-lg:px-2 lt-lg:pt-2">
             <div className="h-full flex flex-col bg-bolt-elements-background-depth-2 border border-bolt-elements-borderColor shadow-sm rounded-lg overflow-hidden">
               <div className="flex items-center px-3 py-2 border-b border-bolt-elements-borderColor">
                 <Slider selected={selectedView} options={sliderOptions} setSelected={setSelectedView} />

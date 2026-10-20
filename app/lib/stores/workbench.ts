@@ -9,6 +9,7 @@ import { EditorStore } from './editor';
 import { FilesStore, type FileMap } from './files';
 import { PreviewsStore } from './previews';
 import { TerminalStore } from './terminal';
+import { showWorkbenchStore } from './workbenchVisibility';
 
 export interface ArtifactState {
   id: string;
@@ -31,7 +32,7 @@ export class WorkbenchStore {
 
   artifacts: Artifacts = import.meta.hot?.data.artifacts ?? map({});
 
-  showWorkbench: WritableAtom<boolean> = import.meta.hot?.data.showWorkbench ?? atom(false);
+  showWorkbench: WritableAtom<boolean> = showWorkbenchStore;
   currentView: WritableAtom<WorkbenchViewType> = import.meta.hot?.data.currentView ?? atom('code');
   unsavedFiles: WritableAtom<Set<string>> = import.meta.hot?.data.unsavedFiles ?? atom(new Set<string>());
   modifiedFiles = new Set<string>();

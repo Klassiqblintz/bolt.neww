@@ -249,3 +249,22 @@
   --bolt-elements-terminal-color-brightCyan: var(--bolt-terminal-brightCyan);
   --bolt-elements-terminal-color-brightWhite: var(--bolt-terminal-brightWhite);
 }
+
+/*
+ * Responsive layout tokens.
+ *
+ * On screens narrower than the desktop breakpoint (1024px) the chat and the
+ * workbench share the full width instead of sitting side by side:
+ *
+ * - `--chat-min-width` no longer forces a 640px minimum, which would make the
+ *   page overflow horizontally on phones and tablets.
+ * - The workbench becomes a full width overlay anchored below the header.
+ */
+@media (max-width: 1023px) {
+  :root {
+    --chat-min-width: 100%;
+    --workbench-width: 100%;
+    --workbench-inner-width: 100%;
+    --workbench-left: 0;
+  }
+}

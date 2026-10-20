@@ -12,7 +12,7 @@ import {
 import { IconButton } from '~/components/ui/IconButton';
 import { PanelHeader } from '~/components/ui/PanelHeader';
 import { PanelHeaderButton } from '~/components/ui/PanelHeaderButton';
-import { shortcutEventEmitter } from '~/lib/hooks';
+import { shortcutEventEmitter, useIsMobile } from '~/lib/hooks';
 import type { FileMap } from '~/lib/stores/files';
 import { themeStore } from '~/lib/stores/theme';
 import { workbenchStore } from '~/lib/stores/workbench';
@@ -57,6 +57,13 @@ export const EditorPanel = memo(
     onFileReset,
   }: EditorPanelProps) => {
     renderLogger.trace('EditorPanel');
+
+    /**
+     * On small screens the file tree and the editor are stacked vertically
+     * instead of sitting side by side, so both stay readable.
+     */
+    const isMobileViewport = useIsMobile();
+    const panelDirection = isMobileViewport ? 'vertical' : 'horizontal';
 
     const theme = useStore(themeStore);
     const showTerminal = useStore(workbenchStore.showTerminal);
@@ -125,9 +132,13 @@ export const EditorPanel = memo(
     return (
       <PanelGroup direction="vertical">
         <Panel defaultSize={showTerminal ? DEFAULT_EDITOR_SIZE : 100} minSize={20}>
-          <PanelGroup direction="horizontal">
-            <Panel defaultSize={20} minSize={10} collapsible>
-              <div className="flex flex-col border-r border-bolt-elements-borderColor h-full">
+          <PanelGroup key={panelDirection} direction={panelDirection}>
+            <Panel defaultSize={isMobileViewport ? 30 : 20} minSize={10} collapsible>
+              <div
+                className={classNames('flex flex-col h-full', 'border-r border-bolt-elements-borderColor', {
+                  'border-r-0 border-b border-bolt-elements-borderColor': isMobileViewport,
+                })}
+              >
                 <PanelHeader>
                   <div className="i-ph:tree-structure-duotone shrink-0" />
                   Files
@@ -144,7 +155,7 @@ export const EditorPanel = memo(
               </div>
             </Panel>
             <PanelResizeHandle />
-            <Panel className="flex flex-col" defaultSize={80} minSize={20}>
+            <Panel className="flex flex-col" defaultSize={isMobileViewport ? 70 : 80} minSize={20}>
               <PanelHeader className="overflow-x-auto">
                 {activeFileSegments?.length && (
                   <div className="flex items-center flex-1 text-sm">

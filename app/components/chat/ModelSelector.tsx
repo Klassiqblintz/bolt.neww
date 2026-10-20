@@ -57,7 +57,7 @@ export function ModelSelector() {
       {open && (
         <ul
           role="listbox"
-          className="absolute bottom-full left-0 mb-2 w-[220px] rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2 shadow-xl py-1 z-prompt"
+          className="absolute bottom-full right-0 mb-2 w-[220px] max-w-[80vw] rounded-lg border border-bolt-elements-borderColor bg-bolt-elements-background-depth-2 shadow-xl py-1 z-prompt"
         >
           {AVAILABLE_MODELS.map((model) => (
             <li key={model.id}>

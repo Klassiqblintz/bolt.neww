@@ -7,6 +7,7 @@ import { Menu } from '~/components/sidebar/Menu.client';
 import { IconButton } from '~/components/ui/IconButton';
 import { Workbench } from '~/components/workbench/Workbench.client';
 import { buildModeStore, chatOptionsStore } from '~/lib/stores/buildMode';
+import { showWorkbenchStore } from '~/lib/stores/workbenchVisibility';
 import { classNames } from '~/utils/classNames';
 import { BuildModeSelector, getPlaceholderForMode } from './BuildModeSelector';
 import { Messages } from './Messages.client';
@@ -59,6 +60,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
     const buildMode = useStore(buildModeStore);
     const { planningMode } = useStore(chatOptionsStore);
+    const showWorkbench = useStore(showWorkbenchStore);
 
     return (
       <div
@@ -68,12 +70,16 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
           'relative flex h-full w-full overflow-hidden bg-bolt-elements-background-depth-1',
         )}
         data-chat-visible={showChat}
+        data-workbench-visible={showWorkbench}
       >
         <ClientOnly>{() => <Menu />}</ClientOnly>
         <div ref={scrollRef} className="flex overflow-y-auto w-full h-full">
           <div className={classNames(styles.Chat, 'flex flex-col flex-grow min-w-[var(--chat-min-width)] h-full')}>
             {!chatStarted && (
-              <div id="intro" className={classNames(styles.Hero, 'mt-[12vh] sm:mt-[15vh] max-w-chat mx-auto px-6')}>
+              <div
+                id="intro"
+                className={classNames(styles.Hero, 'mt-[10vh] sm:mt-[15vh] max-w-chat mx-auto px-4 sm:px-6')}
+              >
                 <h1 className="text-4xl sm:text-5xl text-center font-bold text-bolt-elements-textPrimary mb-3 tracking-tight">
                   What will you build today?
                 </h1>
@@ -83,7 +89,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               </div>
             )}
             <div
-              className={classNames('pt-6 px-6', {
+              className={classNames('pt-6 px-4 sm:px-6', {
                 'h-full flex flex-col': chatStarted,
               })}
             >
@@ -213,7 +219,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               </div>
             </div>
             {!chatStarted && (
-              <div id="examples" className="relative w-full max-w-chat mx-auto mt-6 mb-10 px-6 flex flex-col gap-8">
+              <div
+                id="examples"
+                className="relative w-full max-w-chat mx-auto mt-6 mb-10 px-4 sm:px-6 flex flex-col gap-8"
+              >
                 <BuildModeSelector />
                 <RecentlyViewed />
               </div>

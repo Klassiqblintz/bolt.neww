@@ -1,9 +1,11 @@
+import { useStore } from '@nanostores/react';
 import { motion, type Variants } from 'framer-motion';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { toast } from 'react-toastify';
 import { Dialog, DialogButton, DialogDescription, DialogRoot, DialogTitle } from '~/components/ui/Dialog';
 import { ThemeSwitch } from '~/components/ui/ThemeSwitch';
 import { db, deleteById, getAll, chatId, type ChatHistoryItem } from '~/lib/persistence';
+import { menuOpenStore } from '~/lib/stores/menu';
 import { cubicEasingFn } from '~/utils/easings';
 import { logger } from '~/utils/logger';
 import { HistoryItem } from './HistoryItem';
@@ -35,7 +37,7 @@ type DialogContent = { type: 'delete'; item: ChatHistoryItem } | null;
 export function Menu() {
   const menuRef = useRef<HTMLDivElement>(null);
   const [list, setList] = useState<ChatHistoryItem[]>([]);
-  const [open, setOpen] = useState(false);
+  const open = useStore(menuOpenStore);
   const [dialogContent, setDialogContent] = useState<DialogContent>(null);
 
   const loadEntries = useCallback(() => {
@@ -83,11 +85,11 @@ export function Menu() {
 
     function onMouseMove(event: MouseEvent) {
       if (event.pageX < enterThreshold) {
-        setOpen(true);
+        menuOpenStore.set(true);
       }
 
       if (menuRef.current && event.clientX > menuRef.current.getBoundingClientRect().right + exitThreshold) {
-        setOpen(false);
+        menuOpenStore.set(false);
       }
     }
 
@@ -104,7 +106,7 @@ export function Menu() {
       initial="closed"
       animate={open ? 'open' : 'closed'}
       variants={menuVariants}
-      className="flex flex-col side-menu fixed top-0 w-[350px] h-full bg-bolt-elements-background-depth-2 border-r rounded-r-3xl border-bolt-elements-borderColor z-sidebar shadow-xl shadow-bolt-elements-sidebar-dropdownShadow text-sm"
+      className="flex flex-col side-menu fixed top-0 w-[350px] max-w-[85vw] h-full bg-bolt-elements-background-depth-2 border-r rounded-r-3xl border-bolt-elements-borderColor z-sidebar shadow-xl shadow-bolt-elements-sidebar-dropdownShadow text-sm"
     >
       <div className="flex items-center h-[var(--header-height)]">{/* Placeholder */}</div>
       <div className="flex-1 flex flex-col h-full w-full overflow-hidden">

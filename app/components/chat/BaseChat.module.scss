@@ -19,6 +19,16 @@
 }
 
 /**
+ * Below the desktop breakpoint the workbench is a full width overlay. The chat
+ * column steps aside while it is open so both are never squeezed together.
+ */
+@media (max-width: 1023px) {
+  .BaseChat[data-workbench-visible='true'] .Chat {
+    display: none;
+  }
+}
+
+/**
  * Blue gradient glow behind the homepage hero heading and prompt composer.
  */
 .Hero {
@@ -27,7 +37,7 @@
   &::before {
     content: '';
     position: absolute;
-    inset: -10rem -20rem auto;
+    inset: -10rem 0 auto;
     height: 30rem;
     pointer-events: none;
     background:
