@@ -1,6 +1,7 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { StreamingTextResponse, parseStreamPart } from 'ai';
 import { toAppError } from '~/lib/.server/llm/errors';
+import { getProviderId } from '~/lib/.server/llm/provider';
 import { streamText } from '~/lib/.server/llm/stream-text';
 import { ERROR_CODES, formatError } from '~/lib/errors';
 import { stripIndents } from '~/utils/stripIndent';
@@ -72,7 +73,7 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
   } catch (error) {
     console.error('Prompt enhancement failed\n\n', error);
 
-    const appError = toAppError(error);
+    const appError = toAppError(error, { provider: getProviderId(env) });
 
     return new Response(formatError(appError), {
       status: appError.code === ERROR_CODES.NOT_CONFIGURED ? 503 : 500,

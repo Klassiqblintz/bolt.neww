@@ -1,4 +1,11 @@
 import { ERROR_CODES, type AppError, type ErrorCode } from '~/lib/errors';
+import { getApiKeyEnvName } from './provider';
+import type { ProviderId } from '~/lib/models';
+
+export interface ProviderErrorContext {
+  /** The provider the request was sent to, used to name the right variable. */
+  provider: ProviderId;
+}
 
 /**
  * Maps an error thrown by the AI provider to a safe, actionable message.
@@ -6,11 +13,13 @@ import { ERROR_CODES, type AppError, type ErrorCode } from '~/lib/errors';
  * The raw error is only written to the server log. Nothing that could contain
  * credentials or environment details is forwarded to the client.
  */
-export function toAppError(error: unknown): AppError {
+export function toAppError(error: unknown, context: ProviderErrorContext = { provider: 'anthropic' }): AppError {
+  const keyVariable = getApiKeyEnvName(context.provider);
+
   if (isMissingApiKeyError(error)) {
     return {
       code: ERROR_CODES.NOT_CONFIGURED,
-      message: 'The AI provider is not configured. Add ANTHROPIC_API_KEY to the server environment and try again.',
+      message: `The AI provider is not configured. Add ${keyVariable} to the server environment and try again.`,
     };
   }
 
@@ -21,7 +30,7 @@ export function toAppError(error: unknown): AppError {
     case 403: {
       return {
         code: ERROR_CODES.INVALID_API_KEY,
-        message: 'The configured ANTHROPIC_API_KEY was rejected by the provider. Check that the key is valid.',
+        message: `The configured ${keyVariable} was rejected by the provider. Check that the key is valid.`,
       };
     }
     case 404: {
@@ -67,16 +76,17 @@ export function toAppError(error: unknown): AppError {
 }
 
 /**
- * The Anthropic SDK throws when no API key is available. The message is
- * matched instead of the error type because the SDK does not export a stable
- * error class for it.
+ * The Anthropic SDK throws when no API key is available. The OpenAI
+ * compatible SDK throws the same kind of error. The message is matched
+ * instead of the error type because the SDKs do not export a stable error
+ * class for it.
  */
 function isMissingApiKeyError(error: unknown): boolean {
   if (!(error instanceof Error)) {
     return false;
   }
 
-  return /api key is missing|apiKey.*missing|ANTHROPIC_API_KEY/i.test(error.message);
+  return /api key is missing|apiKey.*missing|ANTHROPIC_API_KEY|OPENROUTER_API_KEY/i.test(error.message);
 }
 
 function getUpstreamStatus(error: unknown): number | undefined {

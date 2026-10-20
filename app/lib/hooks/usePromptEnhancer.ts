@@ -1,7 +1,6 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { parseError } from '~/lib/errors';
-import { DEFAULT_MODEL_ID } from '~/lib/models';
 import { chatOptionsStore } from '~/lib/stores/buildMode';
 import { createScopedLogger } from '~/utils/logger';
 
@@ -27,7 +26,7 @@ export function usePromptEnhancer() {
         method: 'POST',
         body: JSON.stringify({
           message: input,
-          modelId: chatOptionsStore.get().modelId || DEFAULT_MODEL_ID,
+          modelId: chatOptionsStore.get().modelId,
         }),
       });
 

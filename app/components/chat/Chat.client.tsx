@@ -4,9 +4,8 @@ import { useChat } from 'ai/react';
 import { useAnimate } from 'framer-motion';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { cssTransition, toast, ToastContainer } from 'react-toastify';
-import { useMessageParser, usePromptEnhancer, useShortcuts, useSnapScroll } from '~/lib/hooks';
+import { useMessageParser, useModels, usePromptEnhancer, useShortcuts, useSnapScroll } from '~/lib/hooks';
 import { parseError } from '~/lib/errors';
-import { DEFAULT_MODEL_ID } from '~/lib/models';
 import { useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
 import { buildContextPrefix, buildModeStore, chatOptionsStore } from '~/lib/stores/buildMode';
@@ -70,6 +69,12 @@ interface ChatProps {
 export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProps) => {
   useShortcuts();
 
+  /**
+   * Loads the models the server is configured for, so the selector only
+   * offers models that actually work.
+   */
+  useModels();
+
   const textareaRef = useRef<HTMLTextAreaElement>(null);
 
   const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
@@ -91,7 +96,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
    */
   const { modelId } = useStore(chatOptionsStore);
 
-  const requestBody = useMemo(() => ({ modelId: modelId || DEFAULT_MODEL_ID }), [modelId]);
+  const requestBody = useMemo(() => ({ modelId }), [modelId]);
 
   const { messages, isLoading, input, handleInputChange, setInput, stop, append } = useChat({
     api: '/api/chat',

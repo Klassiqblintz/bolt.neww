@@ -1,9 +1,12 @@
-import { env } from 'node:process';
+import type { ProviderId } from '~/lib/models';
+import { getApiKeyEnvName, readEnvValue } from './provider';
 
-export function getAPIKey(cloudflareEnv: Env) {
-  /**
-   * The `cloudflareEnv` is only used when deployed or when previewing locally.
-   * In development the environment variables are available through `env`.
-   */
-  return env.ANTHROPIC_API_KEY || cloudflareEnv.ANTHROPIC_API_KEY;
+/**
+ * Returns the API key of the given provider.
+ *
+ * The key is only ever read on the server. It is never sent to the browser,
+ * never written to a log and never included in an error message.
+ */
+export function getAPIKey(cloudflareEnv: Env, provider: ProviderId): string | undefined {
+  return readEnvValue(getApiKeyEnvName(provider), cloudflareEnv);
 }

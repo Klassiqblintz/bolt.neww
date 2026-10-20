@@ -1,4 +1,13 @@
 import { useEffect, useState } from 'react';
+import type { ProviderId } from '~/lib/models';
+
+export interface ProviderStatus {
+  configured: boolean;
+  provider: ProviderId;
+
+  /** The name of the environment variable that holds the API key. */
+  apiKeyEnvName: string;
+}
 
 /**
  * Checks whether the AI provider is configured on the server.
@@ -7,7 +16,7 @@ import { useEffect, useState } from 'react';
  * is ready and `false` when it is not configured.
  */
 export function useProviderStatus() {
-  const [configured, setConfigured] = useState<boolean | undefined>(undefined);
+  const [status, setStatus] = useState<ProviderStatus | undefined>(undefined);
 
   useEffect(() => {
     let cancelled = false;
@@ -20,10 +29,14 @@ export function useProviderStatus() {
           throw new Error(`Status check failed with status ${response.status}`);
         }
 
-        const data = (await response.json()) as { configured?: boolean };
+        const data = (await response.json()) as Partial<ProviderStatus>;
 
         if (!cancelled) {
-          setConfigured(Boolean(data.configured));
+          setStatus({
+            configured: Boolean(data.configured),
+            provider: data.provider ?? 'anthropic',
+            apiKeyEnvName: data.apiKeyEnvName ?? 'ANTHROPIC_API_KEY',
+          });
         }
       } catch (error) {
         console.error('Failed to check the provider status', error);
@@ -33,7 +46,7 @@ export function useProviderStatus() {
          * a warning. The actual request will report the problem if it fails.
          */
         if (!cancelled) {
-          setConfigured(undefined);
+          setStatus(undefined);
         }
       }
     }
@@ -45,5 +58,5 @@ export function useProviderStatus() {
     };
   }, []);
 
-  return configured;
+  return status;
 }

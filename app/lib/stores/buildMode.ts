@@ -1,5 +1,4 @@
 import { atom, map } from 'nanostores';
-import { DEFAULT_MODEL_ID } from '~/lib/models';
 
 /**
  * Build modes shown on the homepage composer. The selected mode is injected
@@ -32,17 +31,23 @@ export function getBuildModeInstruction(mode: BuildMode): string {
 export const buildModeStore = atom<BuildMode>('app');
 
 export interface ChatOptions {
-  modelId: string;
+  /**
+   * The model the client asked for. It is `undefined` until the server has
+   * reported which models it serves, in which case the server uses its own
+   * default.
+   */
+  modelId: string | undefined;
   planningMode: boolean;
 }
 
 /**
  * Homepage composer options. `modelId` is sent with each chat request and
- * validated server-side; `planningMode` prepends a plan-first instruction to
- * outgoing messages so the assistant outlines an approach before coding.
+ * validated server-side against the catalogue of the configured provider;
+ * `planningMode` prepends a plan-first instruction to outgoing messages so the
+ * assistant outlines an approach before coding.
  */
 export const chatOptionsStore = map<ChatOptions>({
-  modelId: DEFAULT_MODEL_ID,
+  modelId: undefined,
   planningMode: false,
 });
 

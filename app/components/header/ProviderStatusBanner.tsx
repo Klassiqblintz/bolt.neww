@@ -7,9 +7,9 @@ import { useProviderStatus } from '~/lib/hooks';
  * unchanged.
  */
 export function ProviderStatusBanner() {
-  const configured = useProviderStatus();
+  const status = useProviderStatus();
 
-  if (configured !== false) {
+  if (!status || status.configured) {
     return null;
   }
 
@@ -21,7 +21,7 @@ export function ProviderStatusBanner() {
       <div className="i-ph:warning-circle-bold text-base shrink-0 mt-px" />
       <span>
         The AI provider is not configured, so code generation is unavailable. Add{' '}
-        <code className="kdb">ANTHROPIC_API_KEY</code> to the server environment to enable it.
+        <code className="kdb">{status.apiKeyEnvName}</code> to the server environment to enable it.
       </span>
     </div>
   );

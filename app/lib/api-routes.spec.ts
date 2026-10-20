@@ -1,6 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { action as chatAction } from '~/routes/api.chat';
 import { action as enhancerAction } from '~/routes/api.enhancer';
+import { loader as modelsLoader } from '~/routes/api.models';
+import { loader as statusLoader } from '~/routes/api.status';
 import { ERROR_CODES, parseError } from '~/lib/errors';
 
 /**
@@ -8,18 +10,27 @@ import { ERROR_CODES, parseError } from '~/lib/errors';
  * provider, so they also cover the error mapping.
  */
 
-const originalKey = process.env.ANTHROPIC_API_KEY;
+const ENV_KEYS = ['AI_PROVIDER', 'ANTHROPIC_API_KEY', 'OPENROUTER_API_KEY', 'AI_MODELS'];
+
+const originalEnv: Record<string, string | undefined> = {};
 
 beforeEach(() => {
-  delete process.env.ANTHROPIC_API_KEY;
+  for (const key of ENV_KEYS) {
+    originalEnv[key] = process.env[key];
+    delete process.env[key];
+  }
 });
 
 afterEach(() => {
-  if (originalKey === undefined) {
-    delete process.env.ANTHROPIC_API_KEY;
-  } else {
-    process.env.ANTHROPIC_API_KEY = originalKey;
+  for (const key of ENV_KEYS) {
+    if (originalEnv[key] === undefined) {
+      delete process.env[key];
+    } else {
+      process.env[key] = originalEnv[key];
+    }
   }
+
+  vi.unstubAllGlobals();
 });
 
 function chatRequest(body: unknown) {
@@ -39,6 +50,247 @@ function enhancerRequest(body: unknown) {
 }
 
 const context = { cloudflare: { env: {} } } as never;
+
+/**
+ * A minimal OpenAI compatible streaming response.
+ */
+const OPENAI_STREAM = [
+  'data: {"id":"1","object":"chat.completion.chunk","created":1,"model":"anthropic/claude-3.5-sonnet","choices":[{"index":0,"delta":{"content":"Hello"},"finish_reason":null}]}',
+  'data: {"id":"1","object":"chat.completion.chunk","created":1,"model":"anthropic/claude-3.5-sonnet","choices":[{"index":0,"delta":{},"finish_reason":"stop"}]}',
+  'data: [DONE]',
+  '',
+].join('\n\n');
+
+describe('GET /api/models', () => {
+  it('lists the models of the configured provider', async () => {
+    const response = await modelsLoader({ context } as never);
+
+    const data = (await response.json()) as { provider: string; models: Array<{ id: string }> };
+
+    expect(data.provider).toBe('anthropic');
+    expect(data.models.length).toBeGreaterThan(0);
+    expect(data.models.every((model) => model.id.startsWith('claude'))).toBe(true);
+  });
+
+  it('lists the openrouter models when openrouter is configured', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+
+    const response = await modelsLoader({ context } as never);
+
+    const data = (await response.json()) as { provider: string; models: Array<{ id: string }> };
+
+    expect(data.provider).toBe('openrouter');
+    expect(data.models.some((model) => model.id.includes('/'))).toBe(true);
+  });
+
+  it('never exposes a key', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-supersecret';
+
+    const body = await (await modelsLoader({ context } as never)).text();
+
+    expect(body).not.toContain('sk-ant-supersecret');
+  });
+});
+
+describe('GET /api/status', () => {
+  it('reports that the provider is not configured', async () => {
+    const data = (await (await statusLoader({ context } as never)).json()) as {
+      configured: boolean;
+      provider: string;
+      apiKeyEnvName: string;
+    };
+
+    expect(data.configured).toBe(false);
+    expect(data.provider).toBe('anthropic');
+    expect(data.apiKeyEnvName).toBe('ANTHROPIC_API_KEY');
+  });
+
+  it('names the openrouter variable when openrouter is configured', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+
+    const data = (await (await statusLoader({ context } as never)).json()) as {
+      configured: boolean;
+      apiKeyEnvName: string;
+    };
+
+    expect(data.configured).toBe(false);
+    expect(data.apiKeyEnvName).toBe('OPENROUTER_API_KEY');
+  });
+
+  it('never exposes a key', async () => {
+    process.env.OPENROUTER_API_KEY = 'sk-or-supersecret';
+    process.env.AI_PROVIDER = 'openrouter';
+
+    const body = await (await statusLoader({ context } as never)).text();
+
+    expect(body).not.toContain('sk-or-supersecret');
+  });
+});
+
+describe('openrouter requests', () => {
+  it('streams a response from the openai compatible endpoint', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+    process.env.OPENROUTER_API_KEY = 'sk-or-test-key';
+
+    let requestedUrl = '';
+    let requestedBody = '';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (url: string, init: { body?: string; headers?: Record<string, string> }) => {
+        requestedUrl = url;
+        requestedBody = init.body ?? '';
+
+        return new Response(OPENAI_STREAM, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }),
+    );
+
+    const response = await chatAction({
+      context,
+      request: chatRequest({
+        messages: [{ role: 'user', content: 'hello' }],
+        modelId: 'openai/gpt-4o',
+      }),
+      params: {},
+    } as never);
+
+    expect(response.status).toBe(200);
+    expect(requestedUrl).toContain('openrouter.ai');
+    expect(requestedBody).toContain('openai/gpt-4o');
+
+    const text = await response.text();
+
+    expect(text).toContain('Hello');
+  });
+
+  it('sends the openrouter key in the authorization header only', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+    process.env.OPENROUTER_API_KEY = 'sk-or-test-key';
+
+    let requestedHeaders: Record<string, string> = {};
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (_url: string, init: { headers?: Record<string, string> }) => {
+        requestedHeaders = init.headers ?? {};
+
+        return new Response(OPENAI_STREAM, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }),
+    );
+
+    await chatAction({
+      context,
+      request: chatRequest({ messages: [{ role: 'user', content: 'hello' }] }),
+      params: {},
+    } as never);
+
+    expect(JSON.stringify(requestedHeaders)).toContain('sk-or-test-key');
+  });
+
+  it('does not send the anthropic beta header to openrouter', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+    process.env.OPENROUTER_API_KEY = 'sk-or-test-key';
+
+    let requestedHeaders: Record<string, string> = {};
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (_url: string, init: { headers?: Record<string, string> }) => {
+        requestedHeaders = init.headers ?? {};
+
+        return new Response(OPENAI_STREAM, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }),
+    );
+
+    await chatAction({
+      context,
+      request: chatRequest({ messages: [{ role: 'user', content: 'hello' }] }),
+      params: {},
+    } as never);
+
+    expect(requestedHeaders['anthropic-beta']).toBeUndefined();
+  });
+
+  it('reports a missing openrouter key with the right variable name', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+
+    const response = await chatAction({
+      context,
+      request: chatRequest({ messages: [{ role: 'user', content: 'hello' }] }),
+      params: {},
+    } as never);
+
+    expect(response.status).toBe(503);
+
+    const { code, message } = parseError(await response.text());
+
+    expect(code).toBe(ERROR_CODES.NOT_CONFIGURED);
+    expect(message).toContain('OPENROUTER_API_KEY');
+  });
+
+  it('does not leak the openrouter key in an error response', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+    process.env.OPENROUTER_API_KEY = 'sk-or-supersecret';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: { message: 'invalid key sk-or-supersecret' } }), {
+          status: 401,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const response = await chatAction({
+      context,
+      request: chatRequest({ messages: [{ role: 'user', content: 'hello' }] }),
+      params: {},
+    } as never);
+
+    const body = await response.text();
+
+    expect(body).not.toContain('sk-or-supersecret');
+    expect(parseError(body).code).toBe(ERROR_CODES.INVALID_API_KEY);
+  });
+
+  it('enhances a prompt with the openrouter provider', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+    process.env.OPENROUTER_API_KEY = 'sk-or-test-key';
+
+    let requestedBody = '';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (_url: string, init: { body?: string }) => {
+        requestedBody = init.body ?? '';
+
+        return new Response(OPENAI_STREAM, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }),
+    );
+
+    const response = await enhancerAction({
+      context,
+      request: enhancerRequest({ message: 'make a todo app', modelId: 'openai/gpt-4o' }),
+      params: {},
+    } as never);
+
+    expect(response.status).toBe(200);
+    expect(requestedBody).toContain('openai/gpt-4o');
+  });
+});
 
 describe('POST /api/chat', () => {
   it('reports a missing provider configuration instead of an empty error', async () => {

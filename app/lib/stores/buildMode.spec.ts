@@ -1,5 +1,13 @@
 import { describe, expect, it } from 'vitest';
-import { AVAILABLE_MODELS, DEFAULT_MODEL_ID, isValidModelId } from '~/lib/models';
+import {
+  getDefaultModelId,
+  getModelsForProvider,
+  isValidModelId,
+  PROVIDERS,
+  PROVIDER_IDS,
+  type ModelInfo,
+  type ProviderId,
+} from '~/lib/models';
 import {
   BUILD_MODES,
   buildContextPrefix,
@@ -63,20 +71,80 @@ describe('context prefix', () => {
 });
 
 describe('model selection', () => {
-  it('accepts every offered model', () => {
-    for (const model of AVAILABLE_MODELS) {
-      expect(isValidModelId(model.id)).toBe(true);
+  it('accepts every offered model of a provider', () => {
+    for (const provider of PROVIDER_IDS) {
+      for (const model of getModelsForProvider(provider)) {
+        expect(isValidModelId(provider, model.id)).toBe(true);
+      }
     }
   });
 
   it('rejects unknown models', () => {
-    expect(isValidModelId('not-a-model')).toBe(false);
-    expect(isValidModelId('')).toBe(false);
-    expect(isValidModelId(undefined)).toBe(false);
+    expect(isValidModelId('anthropic', 'not-a-model')).toBe(false);
+    expect(isValidModelId('anthropic', '')).toBe(false);
+    expect(isValidModelId('anthropic', undefined)).toBe(false);
+  });
+
+  it('does not accept a model of another provider', () => {
+    const anthropicModel = getModelsForProvider('anthropic')[0];
+
+    expect(isValidModelId('openrouter', anthropicModel.id)).toBe(false);
   });
 
   it('has a default model that is offered', () => {
-    expect(AVAILABLE_MODELS.some((model) => model.id === DEFAULT_MODEL_ID)).toBe(true);
+    for (const provider of PROVIDER_IDS) {
+      const defaultModelId = getDefaultModelId(provider);
+
+      expect(getModelsForProvider(provider).some((model) => model.id === defaultModelId)).toBe(true);
+    }
+  });
+
+  it('restricts the catalogue with an allow list', () => {
+    const models = getModelsForProvider('openrouter', ['openai/gpt-4o']);
+
+    expect(models).toHaveLength(1);
+    expect(models[0].id).toBe('openai/gpt-4o');
+  });
+
+  it('only offers models that support streaming', () => {
+    for (const provider of PROVIDER_IDS) {
+      for (const model of getModelsForProvider(provider)) {
+        expect(model.supportsStreaming).toBe(true);
+      }
+    }
+  });
+
+  it('marks the tool support of every model', () => {
+    for (const provider of PROVIDER_IDS) {
+      for (const model of getModelsForProvider(provider)) {
+        expect(typeof model.supportsTools).toBe('boolean');
+      }
+    }
+  });
+
+  it('exposes a catalogue for every provider', () => {
+    for (const provider of PROVIDER_IDS) {
+      expect(PROVIDERS[provider].models.length).toBeGreaterThan(0);
+      expect(PROVIDERS[provider].label).toBeTruthy();
+    }
+  });
+});
+
+describe('provider catalogue', () => {
+  it('keeps the model ids of a provider unique', () => {
+    for (const provider of PROVIDER_IDS) {
+      const ids = getModelsForProvider(provider).map((model: ModelInfo) => model.id);
+
+      expect(new Set(ids).size).toBe(ids.length);
+    }
+  });
+
+  it('associates every model with its provider', () => {
+    for (const provider of PROVIDER_IDS) {
+      for (const model of getModelsForProvider(provider)) {
+        expect(model.provider).toBe(provider as ProviderId);
+      }
+    }
   });
 });
 
