@@ -1,0 +1,40 @@
+.Card {
+  background: var(--bolt-elements-surface-card);
+  border-color: var(--bolt-elements-surface-cardBorder);
+  transition:
+    background-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
+    transform 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.Card:hover {
+  background: var(--bolt-elements-surface-cardHover);
+  border-color: var(--bolt-elements-borderColorActive);
+  transform: translateY(-1px);
+}
+
+.CardIcon {
+  background: var(--bolt-elements-surface-cardIcon);
+  color: var(--bolt-elements-surface-cardIconText);
+}
+
+.CardTitle {
+  transition: color 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.Card:hover .CardTitle {
+  color: var(--bolt-elements-item-contentAccent);
+}
+
+.CardArrow {
+  opacity: 0;
+  transition: opacity 150ms cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.Card:hover .CardArrow {
+  opacity: 1;
+}
+
+.Empty {
+  background: var(--bolt-elements-surface-card);
+}

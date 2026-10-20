@@ -75,17 +75,24 @@
 /**
  * The composer sits on top of the lighting, so it needs its own separation
  * from the background.
- */
-.Composer {
+ */.Composer {
   transition:
     border-color 150ms cubic-bezier(0.4, 0, 0.2, 1),
     box-shadow 150ms cubic-bezier(0.4, 0, 0.2, 1),
     background-color 150ms cubic-bezier(0.4, 0, 0.2, 1);
 }
-
 .Composer:focus-within {
   border-color: var(--bolt-elements-borderColorActive);
   box-shadow:
     0 0 0 1px var(--bolt-elements-borderColorActive),
     0 18px 48px -24px var(--bolt-elements-hero-glow-primary);
+}
+
+/**
+ * Small badge above the hero heading.
+ */
+.Eyebrow {
+  background: var(--bolt-elements-hero-eyebrow-background);
+  border-color: var(--bolt-elements-hero-eyebrow-border);
+  color: var(--bolt-elements-hero-eyebrow-text);
 }

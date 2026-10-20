@@ -84,12 +84,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               >
                 <div className="flex justify-center mb-5">
                   <span
-                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs sm:text-sm font-medium border"
-                    style={{
-                      background: 'var(--bolt-elements-hero-eyebrow-background)',
-                      borderColor: 'var(--bolt-elements-hero-eyebrow-border)',
-                      color: 'var(--bolt-elements-hero-eyebrow-text)',
-                    }}
+                    className={classNames(
+                      'inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs sm:text-sm font-medium border',
+                      styles.Eyebrow,
+                    )}
                   >
                     <div className="i-ph:sparkle" />
                     AI app builder
