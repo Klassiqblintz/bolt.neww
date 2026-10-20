@@ -92,10 +92,19 @@ export function toAppError(error: unknown, context: ProviderErrorContext = { pro
     }
   }
 
-  if (status && status >= 500) {
+  if (status && (status >= 500 || (status >= 200 && status < 300))) {
+    /**
+     * A 2xx that could not be parsed (e.g. a JSON error inside a 200 stream)
+     * is a provider problem, not a client one. The specific upstream reason
+     * is surfaced when it can be extracted safely.
+     */
+    const detail = getUpstreamMessage(error);
+
     return {
       code: ERROR_CODES.PROVIDER_ERROR,
-      message: 'The AI provider is currently unavailable. Please try again in a moment.',
+      message: detail
+        ? `The AI provider could not complete the request: ${detail}`
+        : 'The AI provider is currently unavailable. Please try again in a moment.',
     };
   }
 
@@ -169,6 +178,24 @@ function getUpstreamStatus(error: unknown, depth = 0): number | undefined {
 const MAX_DETAIL_LENGTH = 240;
 
 /**
+ * Messages the AI SDK uses to wrap a lower-level failure. They carry no
+ * useful information on their own, so the real reason is looked for in the
+ * `cause` chain instead of being shown to the user.
+ */
+const GENERIC_WRAPPER_MESSAGES = [
+  'Failed to process successful response',
+  'Failed to process error response',
+  /Failed after \d+ attempts/,
+  /Cannot connect to API/,
+];
+
+function isGenericWrapperMessage(message: string): boolean {
+  return GENERIC_WRAPPER_MESSAGES.some((pattern) =>
+    typeof pattern === 'string' ? message.startsWith(pattern) : pattern.test(message),
+  );
+}
+
+/**
  * A short, redacted description of what the upstream provider reported.
  *
  * Returns `undefined` when nothing useful can be extracted, so the generic
@@ -193,11 +220,20 @@ export function getUpstreamMessage(error: unknown, depth = 0): string | undefine
     return fromBody;
   }
 
-  if (typeof candidate.message === 'string' && candidate.message.trim() && !isMissingApiKeyError(error)) {
-    return truncate(redactSecrets(candidate.message.trim()));
-  }
+  const message = typeof candidate.message === 'string' ? candidate.message.trim() : '';
+
+  /**
+   * A generic wrapper message (e.g. "Failed to process successful response")
+   * hides the real reason in `cause`. Prefer the specific cause over the
+   * wrapper so the user sees something actionable.
+   */
+  const messageIsGeneric = !message || isGenericWrapperMessage(message);
 
   const nested: unknown[] = [];
+
+  if (candidate.cause) {
+    nested.push(candidate.cause);
+  }
 
   if (candidate.lastError) {
     nested.push(candidate.lastError);
@@ -207,10 +243,24 @@ export function getUpstreamMessage(error: unknown, depth = 0): string | undefine
     nested.push(candidate.errors[candidate.errors.length - 1]);
   }
 
-  if (candidate.cause) {
-    nested.push(candidate.cause);
+  if (messageIsGeneric) {
+    for (const entry of nested) {
+      const detail = getUpstreamMessage(entry, depth + 1);
+
+      if (detail) {
+        return detail;
+      }
+    }
   }
 
+  if (message && !isMissingApiKeyError(error)) {
+    return truncate(redactSecrets(message));
+  }
+
+  /**
+   * The message was generic and the cause held nothing better, so one more
+   * pass over the cause chain is made for a usable detail.
+   */
   for (const entry of nested) {
     const detail = getUpstreamMessage(entry, depth + 1);
 

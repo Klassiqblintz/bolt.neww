@@ -131,6 +131,38 @@ describe('upstream detail for unclassified errors', () => {
   it('falls back to the generic message when there is nothing useful', () => {
     expect(toAppError(new Error(''), { provider: 'anthropic' }).message).toBe('The request failed. Please try again.');
   });
+
+  it('surfaces the real cause behind a 200 that could not be parsed', () => {
+    /**
+     * The exact shape the live deployment produced: the provider answered
+     * HTTP 200 but the body was not a valid stream (e.g. an error event
+     * inside a 200 SSE). The AI SDK wraps it as "Failed to process successful
+     * response" with the real reason in `cause`.
+     */
+    const cause = new Error('Unexpected end of JSON input');
+
+    const error = Object.assign(new Error('Failed to process successful response'), {
+      name: 'AI_APICallError',
+      statusCode: 200,
+      isRetryable: false,
+      cause,
+    });
+
+    const appError = toAppError(error, { provider: 'openrouter', userManaged: true });
+
+    /** It is a provider problem, and it names the real reason. */
+    expect(appError.code).toBe(ERROR_CODES.PROVIDER_ERROR);
+    expect(appError.message).not.toBe('The AI provider is currently unavailable. Please try again in a moment.');
+    expect(appError.message).toContain('Unexpected end of JSON input');
+  });
+
+  it('skips generic wrapper messages to reach the specific cause', () => {
+    const wrapper = Object.assign(new Error('Failed to process successful response'), {
+      cause: new Error('The model returned an error event: no credits'),
+    });
+
+    expect(getUpstreamMessage(wrapper)).toBe('The model returned an error event: no credits');
+  });
 });
 
 describe('user managed providers', () => {
