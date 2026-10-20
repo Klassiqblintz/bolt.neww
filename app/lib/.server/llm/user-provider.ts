@@ -24,7 +24,7 @@ export function validateModelId(modelId: string | undefined): string {
   const value = modelId?.trim();
 
   if (!value) {
-    throw new InvalidProviderError('No model was selected.');
+    throw new InvalidProviderError('No model was selected. Pick a model in the dropdown or set one for this provider.');
   }
 
   if (!MODEL_ID_PATTERN.test(value)) {
@@ -109,7 +109,14 @@ export function resolveProvider({
 
   const baseUrl = normalizeBaseUrl(policy.url.toString());
 
-  const modelId = validateModelId(spec.modelId);
+  /**
+   * The model the client picked in the composer wins over the model stored on
+   * the provider record. This is how a per-conversation selection reaches the
+   * request instead of being silently ignored in favour of the provider default.
+   * Without it, picking a model while a user provider is active had no effect,
+   * and a provider without a stored model failed with "no model was selected".
+   */
+  const modelId = validateModelId(serverModelId || spec.modelId);
 
   return {
     model: createUserModel({ type: spec.type, baseUrl, modelId }, apiKey),

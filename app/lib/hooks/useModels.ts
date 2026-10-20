@@ -1,6 +1,5 @@
 import { useEffect } from 'react';
 import type { ModelInfo, ProviderId } from '~/lib/models';
-import { chatOptionsStore } from '~/lib/stores/buildMode';
 import { modelsStore } from '~/lib/stores/models';
 
 /**
@@ -39,15 +38,12 @@ export function useModels() {
         });
 
         /**
-         * The server default is used until the user picks a model. A model the
-         * server does not offer is never kept.
+         * The selected model is intentionally left `undefined` until the user
+         * picks one. The server falls back to its own default, which keeps a
+         * stale server catalogue model from being sent to a user provider
+         * (that would have produced a "model unavailable" error or, worse,
+         * silently used the wrong model).
          */
-        const available = data.models ?? [];
-        const current = chatOptionsStore.get().modelId;
-
-        if (!current || !available.some((model) => model.id === current)) {
-          chatOptionsStore.setKey('modelId', data.defaultModelId ?? available[0]?.id);
-        }
       } catch (error) {
         console.error('Failed to load the available models', error);
 

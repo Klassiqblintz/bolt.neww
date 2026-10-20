@@ -32,23 +32,23 @@ export function getDescriptionForMode(mode: BuildMode): string {
 }
 
 /**
- * Build-mode chips below the homepage composer. The selection is stored in
+ * Build-mode tiles below the homepage composer. The selection is stored in
  * `buildModeStore` and injected as extra context into the first message so it
  * actually influences what the assistant builds.
+ *
+ * The tiles are evenly spaced rounded squares with the icon above the label, so
+ * the four modes read as a clear, single-choice control on phones, tablets and
+ * desktops. The active tile uses the accent (blue) fill with an accent border.
  */
 export function BuildModeSelector() {
   const mode = useStore(buildModeStore);
 
   return (
     <section aria-label="Build mode">
-      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 sm:gap-3">
-        <span className="hidden sm:block text-sm text-bolt-elements-textTertiary shrink-0">Build</span>
+      <div className="flex flex-col gap-3">
+        <span className="text-sm font-medium text-bolt-elements-textSecondary">What do you want to build?</span>
 
-        <div
-          role="radiogroup"
-          aria-label="Build mode"
-          className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 p-1 rounded-full border border-bolt-elements-borderColor bg-bolt-elements-surface-card"
-        >
+        <div role="radiogroup" aria-label="Build mode" className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
           {BUILD_MODES.map((item) => {
             const active = item.id === mode;
 
@@ -59,23 +59,24 @@ export function BuildModeSelector() {
                 role="radio"
                 aria-checked={active}
                 className={classNames(
-                  'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-all duration-150',
+                  'flex flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-4 text-sm transition-all duration-150 select-none',
                   {
-                    'text-bolt-elements-item-contentAccent bg-bolt-elements-item-backgroundAccent shadow-sm': active,
-                    'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive':
+                    'border-bolt-elements-borderColorActive bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent shadow-sm':
+                      active,
+                    'border-bolt-elements-borderColor bg-bolt-elements-surface-card text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-surface-cardHover':
                       !active,
                   },
                 )}
                 onClick={() => buildModeStore.set(item.id)}
               >
-                <div className={classNames(item.icon, 'text-base shrink-0')} />
-                <span>{item.label}</span>
+                <div className={classNames(item.icon, 'text-2xl shrink-0')} />
+                <span className="font-medium">{item.label}</span>
               </button>
             );
           })}
         </div>
 
-        <p className="mt-2 text-center text-xs text-bolt-elements-textTertiary">{getDescriptionForMode(mode)}</p>
+        <p className="text-center text-xs text-bolt-elements-textTertiary">{getDescriptionForMode(mode)}</p>
       </div>
     </section>
   );

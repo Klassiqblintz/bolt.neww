@@ -137,10 +137,13 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
        */
       const { code, message } = parseError(error instanceof Error ? error.message : undefined);
 
+      /**
+       * The error is shown once, inline in the composer, so it stays visible
+       * next to the retry control. It is intentionally not duplicated as a
+       * toast anymore (transient toasts remain for transient actions only).
+       */
       setErrorMessage(message);
       setHasError(true);
-
-      toast.error(message);
 
       logger.error(`Request failed with code ${code}`);
     },

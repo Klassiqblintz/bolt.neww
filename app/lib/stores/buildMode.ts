@@ -11,7 +11,7 @@ export const BUILD_MODES: Array<{ id: BuildMode; label: string; icon: string }> 
   { id: 'website', label: 'Website', icon: 'i-ph:globe-hemisphere-west' },
   { id: 'slides', label: 'Slides', icon: 'i-ph:presentation-chart' },
   { id: 'app', label: 'App', icon: 'i-ph:device-mobile' },
-  { id: 'prototype', label: 'Prototype', icon: 'i-ph:shapes' },
+  { id: 'prototype', label: 'Prototype', icon: 'i-ph:flask' },
 ];
 
 const BUILD_MODE_INSTRUCTIONS: Record<BuildMode, string> = {

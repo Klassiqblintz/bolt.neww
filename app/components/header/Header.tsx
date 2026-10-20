@@ -32,6 +32,8 @@ export function Header() {
           className="flex items-center justify-center rounded-md p-1.5 text-bolt-elements-textSecondary transition-colors duration-150 hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive"
           title={menuOpen ? 'Close history' : 'Open history'}
           aria-label={menuOpen ? 'Close history' : 'Open history'}
+          aria-expanded={menuOpen}
+          aria-controls="side-menu"
           onClick={() => menuOpenStore.set(!menuOpen)}
         >
           <div className="i-ph:sidebar-simple-duotone text-xl" />

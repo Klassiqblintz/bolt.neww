@@ -224,6 +224,13 @@ export default defineConfig({
             background: 'var(--bolt-elements-cta-background)',
             text: 'var(--bolt-elements-cta-text)',
           },
+          surface: {
+            card: 'var(--bolt-elements-surface-card)',
+            cardHover: 'var(--bolt-elements-surface-cardHover)',
+            cardBorder: 'var(--bolt-elements-surface-cardBorder)',
+            cardIcon: 'var(--bolt-elements-surface-cardIcon)',
+            cardIconText: 'var(--bolt-elements-surface-cardIconText)',
+          },
         },
       },
     },

@@ -129,6 +129,29 @@ describe('provider resolution', () => {
     expect(resolved.modelId).toBe('openai/gpt-4o');
   });
 
+  it('prefers the model picked in the composer over the provider default', () => {
+    const resolved = resolveProvider({
+      env,
+      spec: { type: 'openrouter', modelId: 'openai/gpt-4o' },
+      apiKey: 'sk-or-test',
+      serverModelId: 'anthropic/claude-3.5-sonnet',
+    });
+
+    expect(resolved.source).toBe('user');
+    expect(resolved.modelId).toBe('anthropic/claude-3.5-sonnet');
+  });
+
+  it('accepts a composer selection when the provider has no stored model', () => {
+    const resolved = resolveProvider({
+      env,
+      spec: { type: 'openrouter' },
+      apiKey: 'sk-or-test',
+      serverModelId: 'openai/gpt-4o-mini',
+    });
+
+    expect(resolved.modelId).toBe('openai/gpt-4o-mini');
+  });
+
   it('rejects a user provider without an api key', () => {
     expect(() => resolveProvider({ env, spec: { type: 'openrouter', modelId: 'openai/gpt-4o' } })).toThrow(
       InvalidProviderError,

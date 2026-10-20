@@ -29,6 +29,16 @@ describe('build modes', () => {
     }
   });
 
+  it('uses a distinct, stable icon for each mode', () => {
+    const icons = BUILD_MODES.map((mode) => mode.icon);
+
+    expect(new Set(icons).size).toBe(BUILD_MODES.length);
+    expect(icons).toContain('i-ph:globe-hemisphere-west');
+    expect(icons).toContain('i-ph:presentation-chart');
+    expect(icons).toContain('i-ph:device-mobile');
+    expect(icons).toContain('i-ph:flask');
+  });
+
   it('can select each mode', () => {
     for (const mode of BUILD_MODES) {
       buildModeStore.set(mode.id);
