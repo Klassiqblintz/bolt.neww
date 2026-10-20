@@ -78,6 +78,12 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
 
   const [chatStarted, setChatStarted] = useState(initialMessages.length > 0);
 
+  /**
+   * Tracks whether the last request failed, so the composer can show the error
+   * state on the submit button and allow sending the prompt again.
+   */
+  const [hasError, setHasError] = useState(false);
+
   const { showChat } = useStore(chatStore);
 
   const [animationScope, animate] = useAnimate();
@@ -95,6 +101,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
     body: requestBody,
     onError: (error) => {
       logger.error('Request failed\n\n', error);
+      setHasError(true);
       toast.error('There was an error processing your request');
     },
     onFinish: () => {
@@ -221,6 +228,8 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
 
     setInput('');
 
+    setHasError(false);
+
     resetEnhancer();
 
     textareaRef.current?.blur();
@@ -236,6 +245,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
       showChat={showChat}
       chatStarted={chatStarted}
       isStreaming={isLoading}
+      hasError={hasError}
       enhancingPrompt={enhancingPrompt}
       promptEnhanced={promptEnhanced}
       sendMessage={sendMessage}

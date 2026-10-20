@@ -24,6 +24,7 @@ interface BaseChatProps {
   showChat?: boolean;
   chatStarted?: boolean;
   isStreaming?: boolean;
+  hasError?: boolean;
   messages?: Message[];
   enhancingPrompt?: boolean;
   promptEnhanced?: boolean;
@@ -45,6 +46,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
       showChat = true,
       chatStarted = false,
       isStreaming = false,
+      hasError = false,
       enhancingPrompt = false,
       promptEnhanced = false,
       messages,
@@ -78,12 +80,25 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
             {!chatStarted && (
               <div
                 id="intro"
-                className={classNames(styles.Hero, 'mt-[10vh] sm:mt-[15vh] max-w-chat mx-auto px-4 sm:px-6')}
+                className={classNames(styles.Hero, 'pt-[8vh] sm:pt-[13vh] max-w-chat mx-auto px-4 sm:px-6')}
               >
-                <h1 className="text-4xl sm:text-5xl text-center font-bold text-bolt-elements-textPrimary mb-3 tracking-tight">
+                <div className="flex justify-center mb-5">
+                  <span
+                    className="inline-flex items-center gap-1.5 rounded-full px-3 py-1 text-xs sm:text-sm font-medium border"
+                    style={{
+                      background: 'var(--bolt-elements-hero-eyebrow-background)',
+                      borderColor: 'var(--bolt-elements-hero-eyebrow-border)',
+                      color: 'var(--bolt-elements-hero-eyebrow-text)',
+                    }}
+                  >
+                    <div className="i-ph:sparkle" />
+                    AI app builder
+                  </span>
+                </div>
+                <h1 className="text-4xl sm:text-5xl md:text-6xl text-center font-bold text-bolt-elements-textPrimary mb-4 tracking-tight leading-[1.1]">
                   What will you build today?
                 </h1>
-                <p className="mb-1 text-center text-bolt-elements-textSecondary">
+                <p className="mb-1 text-center text-bolt-elements-textSecondary text-base sm:text-lg max-w-xl mx-auto">
                   Build apps and websites by chatting with AI. Describe your idea and Bolt writes the code.
                 </p>
               </div>
@@ -112,15 +127,13 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
               >
                 <div
                   className={classNames(
-                    'shadow-sm border border-bolt-elements-borderColor bg-bolt-elements-prompt-background backdrop-filter backdrop-blur-[8px] rounded-2xl overflow-hidden transition-theme',
-                    {
-                      'border-bolt-elements-borderColorActive': input.length > 0,
-                    },
+                    styles.Composer,
+                    'shadow-sm border border-bolt-elements-borderColor bg-bolt-elements-prompt-background backdrop-filter backdrop-blur-[8px] rounded-2xl sm:rounded-3xl overflow-hidden',
                   )}
                 >
                   <textarea
                     ref={textareaRef}
-                    className="w-full pl-4 pt-4 pr-16 focus:outline-none resize-none text-md text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent"
+                    className="w-full pl-4 sm:pl-5 pt-4 sm:pt-5 pr-16 pb-2 focus:outline-none resize-none text-md sm:text-lg text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent"
                     onKeyDown={(event) => {
                       if (event.key === 'Enter') {
                         if (event.shiftKey) {
@@ -146,8 +159,10 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                   <ClientOnly>
                     {() => (
                       <SendButton
-                        show={input.length > 0 || isStreaming}
+                        show
                         isStreaming={isStreaming}
+                        hasError={hasError}
+                        disabled={input.trim().length === 0}
                         onClick={(event) => {
                           if (isStreaming) {
                             handleStop?.();
@@ -159,7 +174,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       />
                     )}
                   </ClientOnly>
-                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm p-3 pt-2">
+                  <div className="flex flex-wrap items-center justify-between gap-2 text-sm px-3 sm:px-4 pb-3 pt-1">
                     <div className="flex gap-1 items-center">
                       <IconButton
                         title="Attach files (not available yet)"
@@ -193,24 +208,31 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         )}
                       </IconButton>
                     </div>
-                    <div className="flex gap-1 items-center">
-                      <IconButton
+                    <div className="flex gap-1.5 items-center">
+                      <button
+                        type="button"
                         title={
                           planningMode
                             ? 'Planning mode is on: Bolt outlines a plan before coding (click to disable)'
                             : 'Planning mode: ask Bolt to outline a plan before coding'
                         }
-                        className={classNames('gap-1.5 px-2', {
-                          'text-bolt-elements-item-contentAccent! bg-bolt-elements-item-backgroundAccent!':
-                            planningMode,
-                        })}
+                        aria-pressed={planningMode}
+                        className={classNames(
+                          'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm border transition-colors duration-150',
+                          {
+                            'text-bolt-elements-item-contentAccent bg-bolt-elements-item-backgroundAccent border-bolt-elements-item-contentAccent':
+                              planningMode,
+                            'text-bolt-elements-textSecondary border-transparent hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive':
+                              !planningMode,
+                          },
+                        )}
                         onClick={() => {
                           chatOptionsStore.setKey('planningMode', !planningMode);
                         }}
                       >
-                        <div className="i-ph:lightbulb text-xl" />
-                        <span className="text-sm">Plan</span>
-                      </IconButton>
+                        <div className="i-ph:lightbulb text-lg" />
+                        <span>Plan</span>
+                      </button>
                       <ClientOnly>{() => <ModelSelector />}</ClientOnly>
                     </div>
                   </div>

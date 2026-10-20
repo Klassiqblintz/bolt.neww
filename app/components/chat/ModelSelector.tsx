@@ -39,7 +39,7 @@ export function ModelSelector() {
       <button
         type="button"
         className={classNames(
-          'flex items-center gap-1.5 text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-theme rounded-md px-2 py-1',
+          'flex items-center gap-1.5 text-sm text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary transition-colors duration-150 rounded-full px-2.5 py-1.5',
           {
             'text-bolt-elements-textPrimary bg-bolt-elements-item-backgroundActive': open,
           },
@@ -66,9 +66,9 @@ export function ModelSelector() {
                 role="option"
                 aria-selected={model.id === selected.id}
                 className={classNames(
-                  'flex w-full items-center justify-between px-3 py-2 text-sm text-left transition-theme',
+                  'flex w-full items-center justify-between px-3 py-2 text-sm text-left transition-colors duration-150',
                   model.id === selected.id
-                    ? 'text-bolt-elements-textPrimary bg-bolt-elements-item-backgroundAccent'
+                    ? 'text-bolt-elements-item-contentAccent bg-bolt-elements-item-backgroundAccent'
                     : 'text-bolt-elements-textSecondary hover:bg-bolt-elements-item-backgroundActive hover:text-bolt-elements-textPrimary',
                 )}
                 onClick={() => {

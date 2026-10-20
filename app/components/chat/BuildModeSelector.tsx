@@ -22,29 +22,41 @@ export function BuildModeSelector() {
   const mode = useStore(buildModeStore);
 
   return (
-    <div className="flex flex-wrap items-center justify-center gap-2" role="radiogroup" aria-label="Build mode">
-      {BUILD_MODES.map((item) => {
-        const active = item.id === mode;
+    <section aria-label="Build mode">
+      <div className="flex flex-col sm:flex-row sm:items-center sm:justify-center gap-2 sm:gap-3">
+        <span className="hidden sm:block text-sm text-bolt-elements-textTertiary shrink-0">Build</span>
 
-        return (
-          <button
-            key={item.id}
-            type="button"
-            role="radio"
-            aria-checked={active}
-            className={classNames(
-              'flex items-center gap-2 rounded-full px-4 py-1.5 text-sm border transition-theme',
-              active
-                ? 'bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent border-bolt-elements-item-contentAccent'
-                : 'bg-bolt-elements-background-depth-1 text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary border-bolt-elements-borderColor hover:border-bolt-elements-borderColorActive',
-            )}
-            onClick={() => buildModeStore.set(item.id)}
-          >
-            <div className={classNames(item.icon, 'text-base')} />
-            {item.label}
-          </button>
-        );
-      })}
-    </div>
+        <div
+          role="radiogroup"
+          aria-label="Build mode"
+          className="flex flex-wrap items-center justify-center gap-1.5 sm:gap-2 p-1 rounded-full border border-bolt-elements-borderColor bg-bolt-elements-surface-card"
+        >
+          {BUILD_MODES.map((item) => {
+            const active = item.id === mode;
+
+            return (
+              <button
+                key={item.id}
+                type="button"
+                role="radio"
+                aria-checked={active}
+                className={classNames(
+                  'flex items-center gap-1.5 rounded-full px-3 py-1.5 text-sm transition-all duration-150',
+                  {
+                    'text-bolt-elements-item-contentAccent bg-bolt-elements-item-backgroundAccent shadow-sm': active,
+                    'text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive':
+                      !active,
+                  },
+                )}
+                onClick={() => buildModeStore.set(item.id)}
+              >
+                <div className={classNames(item.icon, 'text-base shrink-0')} />
+                <span>{item.label}</span>
+              </button>
+            );
+          })}
+        </div>
+      </div>
+    </section>
   );
 }

@@ -65,6 +65,22 @@
 
   --bolt-elements-prompt-background: theme('colors.alpha.white.80');
 
+  /* Hero / landing surface */
+  --bolt-elements-hero-glow-primary: rgba(43, 166, 255, 0.20);
+  --bolt-elements-hero-glow-secondary: rgba(99, 102, 241, 0.12);
+  --bolt-elements-hero-glow-tertiary: rgba(14, 165, 233, 0.10);
+  --bolt-elements-hero-grid: rgba(15, 23, 42, 0.04);
+  --bolt-elements-hero-eyebrow-background: rgba(43, 166, 255, 0.08);
+  --bolt-elements-hero-eyebrow-border: rgba(43, 166, 255, 0.24);
+  --bolt-elements-hero-eyebrow-text: theme('colors.accent.600');
+
+  /* Cards / elevated surfaces */
+  --bolt-elements-surface-card: rgba(15, 23, 42, 0.02);
+  --bolt-elements-surface-cardHover: rgba(15, 23, 42, 0.045);
+  --bolt-elements-surface-cardBorder: rgba(15, 23, 42, 0.08);
+  --bolt-elements-surface-cardIcon: rgba(43, 166, 255, 0.10);
+  --bolt-elements-surface-cardIconText: theme('colors.accent.600');
+
   --bolt-elements-sidebar-dropdownShadow: theme('colors.alpha.gray.10');
   --bolt-elements-sidebar-buttonBackgroundDefault: theme('colors.alpha.accent.10');
   --bolt-elements-sidebar-buttonBackgroundHover: theme('colors.alpha.accent.20');
@@ -170,6 +186,22 @@
   --bolt-elements-dividerColor: theme('colors.gray.100');
 
   --bolt-elements-prompt-background: theme('colors.alpha.gray.80');
+
+  /* Hero / landing surface */
+  --bolt-elements-hero-glow-primary: rgba(43, 166, 255, 0.30);
+  --bolt-elements-hero-glow-secondary: rgba(99, 102, 241, 0.20);
+  --bolt-elements-hero-glow-tertiary: rgba(14, 165, 233, 0.16);
+  --bolt-elements-hero-grid: rgba(255, 255, 255, 0.045);
+  --bolt-elements-hero-eyebrow-background: rgba(43, 166, 255, 0.12);
+  --bolt-elements-hero-eyebrow-border: rgba(43, 166, 255, 0.28);
+  --bolt-elements-hero-eyebrow-text: theme('colors.accent.400');
+
+  /* Cards / elevated surfaces */
+  --bolt-elements-surface-card: rgba(255, 255, 255, 0.035);
+  --bolt-elements-surface-cardHover: rgba(255, 255, 255, 0.07);
+  --bolt-elements-surface-cardBorder: rgba(255, 255, 255, 0.08);
+  --bolt-elements-surface-cardIcon: rgba(43, 166, 255, 0.14);
+  --bolt-elements-surface-cardIconText: theme('colors.accent.400');
 
   --bolt-elements-sidebar-dropdownShadow: theme('colors.alpha.gray.30');
   --bolt-elements-sidebar-buttonBackgroundDefault: theme('colors.alpha.accent.10');
