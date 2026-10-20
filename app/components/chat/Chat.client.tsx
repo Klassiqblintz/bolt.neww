@@ -8,12 +8,7 @@ import { useMessageParser, usePromptEnhancer, useShortcuts, useSnapScroll } from
 import { DEFAULT_MODEL_ID } from '~/lib/models';
 import { useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
-import {
-  buildModeStore,
-  chatOptionsStore,
-  getBuildModeInstruction,
-  PLANNING_INSTRUCTION,
-} from '~/lib/stores/buildMode';
+import { buildContextPrefix, buildModeStore, chatOptionsStore } from '~/lib/stores/buildMode';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { fileModificationsToHTML } from '~/utils/diff';
 import { cubicEasingFn } from '~/utils/easings';
@@ -197,11 +192,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
      * On a fresh conversation, prepend the selected build mode and (optionally)
      * the planning-mode instruction so they genuinely steer what gets built.
      */
-    const contextPrefix = chatStarted
-      ? ''
-      : [getBuildModeInstruction(buildModeStore.get()), planningMode ? PLANNING_INSTRUCTION : '']
-          .filter(Boolean)
-          .join('\n\n');
+    const contextPrefix = chatStarted ? '' : buildContextPrefix(buildModeStore.get(), planningMode);
 
     const finalInput = contextPrefix ? `${contextPrefix}\n\n${_input}` : _input;
 

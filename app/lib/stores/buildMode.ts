@@ -48,3 +48,19 @@ export const chatOptionsStore = map<ChatOptions>({
 
 export const PLANNING_INSTRUCTION =
   'Before writing any code, first outline a concise step-by-step plan for this request. Then continue with the implementation.';
+
+/**
+ * Builds the context that is prepended to the first message of a conversation.
+ *
+ * The selected build mode tells the model what kind of deliverable to create
+ * and planning mode asks for a plan before any code is written.
+ */
+export function buildContextPrefix(mode: BuildMode, planningMode: boolean): string {
+  const parts = [getBuildModeInstruction(mode)];
+
+  if (planningMode) {
+    parts.push(PLANNING_INSTRUCTION);
+  }
+
+  return parts.join('\n\n');
+}
