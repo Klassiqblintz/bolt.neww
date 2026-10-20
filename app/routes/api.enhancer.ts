@@ -13,6 +13,13 @@ export async function action(args: ActionFunctionArgs) {
 async function enhancerAction({ context, request }: ActionFunctionArgs) {
   const { message } = await request.json<{ message: string }>();
 
+  /**
+   * `context.cloudflare` is only present when running on Cloudflare. On other
+   * runtimes (e.g. the Node build used by Vercel) the API key is read from the
+   * process environment instead.
+   */
+  const env = context.cloudflare?.env ?? ({} as Env);
+
   try {
     const result = await streamText(
       [
@@ -29,7 +36,7 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
         `,
         },
       ],
-      context.cloudflare.env,
+      env,
     );
 
     const transformStream = new TransformStream({

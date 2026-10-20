@@ -14,9 +14,14 @@ export default defineConfig((config) => {
       nodePolyfills({
         include: ['path', 'buffer'],
       }),
-      // Miniflare (Cloudflare Workers runtime) cannot start on Android (mmap limits),
-      // so skip the dev proxy and run as a plain Node Vite app for previewing.
-      // config.mode !== 'test' && remixCloudflareDevProxy(),
+
+      /**
+       * The Cloudflare dev proxy requires the Miniflare (Workers) runtime, which
+       * cannot start in every environment (e.g. Android, where its memory mapping
+       * fails). Set `DISABLE_CF_PROXY=1` to run the dev server as a plain Node
+       * app instead. The AI chat API is the only feature that needs the runtime.
+       */
+      !process.env.DISABLE_CF_PROXY && config.mode !== 'test' && remixCloudflareDevProxy(),
       remixVitePlugin({
         future: {
           v3_fetcherPersist: true,

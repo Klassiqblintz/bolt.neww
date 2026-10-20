@@ -9,7 +9,14 @@ export async function action(args: ActionFunctionArgs) {
 }
 
 async function chatAction({ context, request }: ActionFunctionArgs) {
-  const { messages } = await request.json<{ messages: Messages }>();
+  const { messages, modelId } = await request.json<{ messages: Messages; modelId?: string }>();
+
+  /**
+   * `context.cloudflare` is only present when running on Cloudflare. On other
+   * runtimes (e.g. the Node build used by Vercel) the API key is read from the
+   * process environment instead.
+   */
+  const env = context.cloudflare?.env ?? ({} as Env);
 
   const stream = new SwitchableStream();
 
@@ -32,13 +39,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         messages.push({ role: 'assistant', content });
         messages.push({ role: 'user', content: CONTINUE_PROMPT });
 
-        const result = await streamText(messages, context.cloudflare.env, options);
+        const result = await streamText(messages, env, modelId, options);
 
         return stream.switchSource(result.toAIStream());
       },
     };
 
-    const result = await streamText(messages, context.cloudflare.env, options);
+    const result = await streamText(messages, env, modelId, options);
 
     stream.switchSource(result.toAIStream());
 

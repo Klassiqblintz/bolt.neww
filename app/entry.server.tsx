@@ -1,8 +1,11 @@
 import type { AppLoadContext, EntryContext } from '@remix-run/cloudflare';
 import { RemixServer } from '@remix-run/react';
 import { isbot } from 'isbot';
-// Use the web-streams (edge/browser) build: under Node dev the "server" export
-// resolves to the Node streams build which has no renderToReadableStream.
+
+/**
+ * Use the web-streams (edge/browser) build: under Node dev the "server" export
+ * resolves to the Node streams build which has no renderToReadableStream.
+ */
 import { renderToReadableStream } from 'react-dom/server.browser';
 import { renderHeadToString } from 'remix-island';
 import { Head } from './root';

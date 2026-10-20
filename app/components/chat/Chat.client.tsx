@@ -2,11 +2,18 @@ import { useStore } from '@nanostores/react';
 import type { Message } from 'ai';
 import { useChat } from 'ai/react';
 import { useAnimate } from 'framer-motion';
-import { memo, useEffect, useRef, useState } from 'react';
+import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { cssTransition, toast, ToastContainer } from 'react-toastify';
 import { useMessageParser, usePromptEnhancer, useShortcuts, useSnapScroll } from '~/lib/hooks';
+import { DEFAULT_MODEL_ID } from '~/lib/models';
 import { useChatHistory } from '~/lib/persistence';
 import { chatStore } from '~/lib/stores/chat';
+import {
+  buildModeStore,
+  chatOptionsStore,
+  getBuildModeInstruction,
+  PLANNING_INSTRUCTION,
+} from '~/lib/stores/buildMode';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { fileModificationsToHTML } from '~/utils/diff';
 import { cubicEasingFn } from '~/utils/easings';
@@ -75,8 +82,17 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
 
   const [animationScope, animate] = useAnimate();
 
+  /**
+   * Subscribe to the model selection so the chat request body is updated when
+   * the user picks a different model in the composer.
+   */
+  const { modelId } = useStore(chatOptionsStore);
+
+  const requestBody = useMemo(() => ({ modelId: modelId || DEFAULT_MODEL_ID }), [modelId]);
+
   const { messages, isLoading, input, handleInputChange, setInput, stop, append } = useChat({
     api: '/api/chat',
+    body: requestBody,
     onError: (error) => {
       logger.error('Request failed\n\n', error);
       toast.error('There was an error processing your request');
@@ -168,6 +184,20 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
 
     runAnimation();
 
+    const { planningMode } = chatOptionsStore.get();
+
+    /**
+     * On a fresh conversation, prepend the selected build mode and (optionally)
+     * the planning-mode instruction so they genuinely steer what gets built.
+     */
+    const contextPrefix = chatStarted
+      ? ''
+      : [getBuildModeInstruction(buildModeStore.get()), planningMode ? PLANNING_INSTRUCTION : '']
+          .filter(Boolean)
+          .join('\n\n');
+
+    const finalInput = contextPrefix ? `${contextPrefix}\n\n${_input}` : _input;
+
     if (fileModifications !== undefined) {
       const diff = fileModificationsToHTML(fileModifications);
 
@@ -178,7 +208,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
        * manually reset the input and we'd have to manually pass in file attachments. However, those
        * aren't relevant here.
        */
-      append({ role: 'user', content: `${diff}\n\n${_input}` });
+      append({ role: 'user', content: `${diff}\n\n${finalInput}` });
 
       /**
        * After sending a new message we reset all modifications since the model
@@ -186,7 +216,7 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
        */
       workbenchStore.resetAllFileModifications();
     } else {
-      append({ role: 'user', content: _input });
+      append({ role: 'user', content: finalInput });
     }
 
     setInput('');
