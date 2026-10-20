@@ -11,42 +11,56 @@ interface MessagesProps {
   messages?: Message[];
 }
 
+/**
+ * The conversation transcript.
+ *
+ * User prompts render as compact, right aligned bubbles, assistant answers as
+ * plain readable text in the content column. There is no card around every
+ * message and no repeated avatar: cards are reserved for what the assistant
+ * actually produces (artifacts, files, previews) inside the answer itself.
+ */
 export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: MessagesProps, ref) => {
   const { id, isStreaming = false, messages = [] } = props;
 
+  const lastMessage = messages[messages.length - 1];
+  const waitingForAnswer = !lastMessage || lastMessage.role === 'user';
+
   return (
     <div id={id} ref={ref} className={props.className}>
-      {messages.length > 0
-        ? messages.map((message, index) => {
-            const { role, content } = message;
-            const isUserMessage = role === 'user';
-            const isFirst = index === 0;
-            const isLast = index === messages.length - 1;
+      {messages.map((message, index) => {
+        const { role, content } = message;
+        const isUserMessage = role === 'user';
 
-            return (
-              <div
-                key={index}
-                className={classNames('flex gap-4 p-6 w-full rounded-[calc(0.75rem-1px)]', {
-                  'bg-bolt-elements-messages-background': isUserMessage || !isStreaming || (isStreaming && !isLast),
-                  'bg-gradient-to-b from-bolt-elements-messages-background from-30% to-transparent':
-                    isStreaming && isLast,
-                  'mt-4': !isFirst,
-                })}
-              >
-                {isUserMessage && (
-                  <div className="flex items-center justify-center w-[34px] h-[34px] overflow-hidden bg-white text-gray-600 rounded-full shrink-0 self-start">
-                    <div className="i-ph:user-fill text-xl"></div>
-                  </div>
-                )}
-                <div className="grid grid-col-1 w-full">
-                  {isUserMessage ? <UserMessage content={content} /> : <AssistantMessage content={content} />}
-                </div>
+        if (isUserMessage) {
+          return (
+            <div key={index} className={classNames('flex justify-end w-full', { 'mt-6': index > 0 })}>
+              <div className="max-w-[85%] sm:max-w-[75%] rounded-2xl rounded-br-md bg-bolt-elements-messages-background px-4 py-2.5">
+                <UserMessage content={content} />
               </div>
-            );
-          })
-        : null}
-      {isStreaming && (
-        <div className="text-center w-full text-bolt-elements-textSecondary i-svg-spinners:3-dots-fade text-4xl mt-4"></div>
+            </div>
+          );
+        }
+
+        return (
+          <div key={index} className={classNames('w-full overflow-hidden', { 'mt-6': index > 0 })}>
+            <AssistantMessage content={content} />
+          </div>
+        );
+      })}
+
+      {/**
+       * Generation state: shown while the request is in flight and no answer
+       * has arrived yet. Once the model streams content, the growing answer is
+       * the indicator itself.
+       */}
+      {isStreaming && waitingForAnswer && (
+        <div
+          role="status"
+          aria-label="Bolt is thinking"
+          className="flex items-center gap-1.5 mt-6 text-bolt-elements-textSecondary"
+        >
+          <span className="i-svg-spinners:3-dots-fade text-3xl" aria-hidden="true" />
+        </div>
       )}
     </div>
   );

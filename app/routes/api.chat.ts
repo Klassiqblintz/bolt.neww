@@ -1,5 +1,5 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
-import { toAppError } from '~/lib/.server/llm/errors';
+import { ModelUnavailableError, toAppError } from '~/lib/.server/llm/errors';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/.server/llm/prompts';
 import { getProviderId } from '~/lib/.server/llm/provider';
@@ -24,6 +24,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
 
   const stream = new SwitchableStream();
 
+  /**
+   * Whether the request named a user managed provider. Hoisted so the error
+   * handler can report the failure against the right kind of credential.
+   */
+  let userManaged = false;
+
   try {
     const { messages, modelId, provider } =
       (await request.json<{
@@ -47,9 +53,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
      * never stored and never written to a log.
      */
     const userApiKey = request.headers.get(PROVIDER_KEY_HEADER) ?? undefined;
+    const spec = normalizeProviderSpec(provider);
+
+    userManaged = Boolean(spec);
 
     const resolved = resolveProvider({
-      spec: normalizeProviderSpec(provider),
+      spec,
       apiKey: userApiKey,
       env: cloudflareEnv,
       serverModelId: modelId,
@@ -96,17 +105,17 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
      */
     console.error('Chat request failed\n\n', redactValue(error));
 
-    if (error instanceof InvalidProviderError) {
+    if (error instanceof InvalidProviderError || error instanceof ModelUnavailableError) {
       return new Response(
         formatError({
-          code: ERROR_CODES.INVALID_REQUEST,
+          code: error instanceof ModelUnavailableError ? ERROR_CODES.MODEL_UNAVAILABLE : ERROR_CODES.INVALID_REQUEST,
           message: error.message,
         }),
         { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
       );
     }
 
-    const appError = toAppError(error, { provider: getProviderId(cloudflareEnv) });
+    const appError = toAppError(error, { provider: getProviderId(cloudflareEnv), userManaged });
 
     return new Response(formatError(appError), {
       status: appError.code === ERROR_CODES.NOT_CONFIGURED ? 503 : 500,

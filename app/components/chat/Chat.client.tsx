@@ -11,6 +11,7 @@ import { getProviderHeaders, getProviderSpec, loadProviders } from '~/lib/provid
 import { chatStore } from '~/lib/stores/chat';
 import { buildContextPrefix, buildModeStore, chatOptionsStore } from '~/lib/stores/buildMode';
 import { providersStore } from '~/lib/stores/providers';
+import { whenSelectionReady } from '~/lib/stores/selection';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { fileModificationsToHTML } from '~/utils/diff';
 import { cubicEasingFn } from '~/utils/easings';
@@ -218,6 +219,14 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
     if (_input.length === 0 || isLoading) {
       return;
     }
+
+    /**
+     * The saved provider/model pair is restored during initialization. Waiting
+     * for it here means a prompt never leaves the composer before the real
+     * selection is known, so a reload cannot silently downgrade a request to
+     * the server default.
+     */
+    await whenSelectionReady();
 
     /**
      * @note (delm) Usually saving files shouldn't take long but it may take longer if there

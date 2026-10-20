@@ -1,5 +1,5 @@
 import { useStore } from '@nanostores/react';
-import { BUILD_MODES, buildModeStore, type BuildMode } from '~/lib/stores/buildMode';
+import { BUILD_MODES, buildModeStore, setBuildMode, type BuildMode } from '~/lib/stores/buildMode';
 import { classNames } from '~/utils/classNames';
 
 const MODE_PLACEHOLDERS: Record<BuildMode, string> = {
@@ -32,13 +32,14 @@ export function getDescriptionForMode(mode: BuildMode): string {
 }
 
 /**
- * Build-mode tiles below the homepage composer. The selection is stored in
- * `buildModeStore` and injected as extra context into the first message so it
- * actually influences what the assistant builds.
+ * Compact, icon-first build mode selector.
  *
- * The tiles are evenly spaced rounded squares with the icon above the label, so
- * the four modes read as a clear, single-choice control on phones, tablets and
- * desktops. The active tile uses the accent (blue) fill with an accent border.
+ * The four modes sit in one horizontal row whenever space permits. Every
+ * option is a rounded-square icon tile with its label directly underneath,
+ * outside of the tile: the icon carries the choice, the label names it. The
+ * active mode gets a blue border, an accent tint and a soft glow, while the
+ * inactive tiles stay clearly visible on their dark (dark theme) or light
+ * (light theme) surface.
  */
 export function BuildModeSelector() {
   const mode = useStore(buildModeStore);
@@ -46,9 +47,11 @@ export function BuildModeSelector() {
   return (
     <section aria-label="Build mode">
       <div className="flex flex-col gap-3">
-        <span className="text-sm font-medium text-bolt-elements-textSecondary">What do you want to build?</span>
+        <span className="text-sm font-medium text-bolt-elements-textSecondary text-center">
+          What do you want to build?
+        </span>
 
-        <div role="radiogroup" aria-label="Build mode" className="grid grid-cols-2 sm:grid-cols-4 gap-2 sm:gap-3">
+        <div role="radiogroup" aria-label="Build mode" className="flex flex-wrap justify-center gap-4 sm:gap-6">
           {BUILD_MODES.map((item) => {
             const active = item.id === mode;
 
@@ -58,19 +61,33 @@ export function BuildModeSelector() {
                 type="button"
                 role="radio"
                 aria-checked={active}
-                className={classNames(
-                  'flex flex-col items-center justify-center gap-2 rounded-2xl border px-3 py-4 text-sm transition-all duration-150 select-none',
-                  {
-                    'border-bolt-elements-borderColorActive bg-bolt-elements-item-backgroundAccent text-bolt-elements-item-contentAccent shadow-sm':
-                      active,
-                    'border-bolt-elements-borderColor bg-bolt-elements-surface-card text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-surface-cardHover':
-                      !active,
-                  },
-                )}
-                onClick={() => buildModeStore.set(item.id)}
+                title={MODE_DESCRIPTIONS[item.id]}
+                className={classNames('group flex flex-col items-center gap-1.5 select-none', {
+                  'text-bolt-elements-item-contentAccent': active,
+                  'text-bolt-elements-textPrimary': !active,
+                })}
+                onClick={() => setBuildMode(item.id)}
               >
-                <div className={classNames(item.icon, 'text-2xl shrink-0')} />
-                <span className="font-medium">{item.label}</span>
+                {/**
+                 * Square icon tile. The label intentionally lives outside of
+                 * it, underneath, so the four modes read as one balanced row
+                 * instead of four large cards.
+                 */}
+                <span
+                  className={classNames(
+                    'flex h-14 w-14 sm:h-16 sm:w-16 items-center justify-center rounded-2xl border transition-all duration-150',
+                    {
+                      'border-bolt-elements-borderColorActive bg-bolt-elements-item-backgroundAccent shadow-md shadow-bolt-elements-item-backgroundAccent':
+                        active,
+                      'border-bolt-elements-borderColor bg-bolt-elements-background-depth-2 group-hover:bg-bolt-elements-background-depth-3':
+                        !active,
+                    },
+                  )}
+                >
+                  <span className={classNames(item.icon, 'text-2xl sm:text-3xl')} aria-hidden="true" />
+                </span>
+
+                <span className="text-xs sm:text-sm font-medium leading-none text-center">{item.label}</span>
               </button>
             );
           })}

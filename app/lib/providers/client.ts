@@ -54,7 +54,22 @@ function writeDefaultProviderId(id: string | undefined): void {
  * Reads the vault and fills the store.
  */
 export async function loadProviders(): Promise<StoredProvider[]> {
-  const providers = await getVault().list();
+  let providers: StoredProvider[] = [];
+
+  try {
+    providers = await getVault().list();
+  } catch (error) {
+    /**
+     * The vault can fail (e.g. private browsing). The store is still marked
+     * loaded so the selection restore and the composer are never blocked by
+     * a broken vault.
+     */
+    console.error('The provider vault could not be read', error);
+
+    providersStore.set({ providers: [], defaultProviderId: undefined, loaded: true });
+
+    return [];
+  }
 
   keyCache.clear();
 

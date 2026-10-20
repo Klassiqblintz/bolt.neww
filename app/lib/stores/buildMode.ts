@@ -28,7 +28,64 @@ export function getBuildModeInstruction(mode: BuildMode): string {
   return BUILD_MODE_INSTRUCTIONS[mode];
 }
 
-export const buildModeStore = atom<BuildMode>('app');
+const BUILD_MODE_STORAGE_KEY = 'bolt_build_mode';
+
+/** The minimal storage surface, so the logic can be tested without a browser. */
+export interface StorageLike {
+  getItem(key: string): string | null;
+  setItem(key: string, value: string): void;
+}
+
+/**
+ * Reads the persisted build mode. Unknown or corrupted values are ignored, a
+ * broken entry must never break the composer.
+ */
+export function readPersistedBuildMode(storage?: StorageLike): BuildMode | undefined {
+  const target = storage ?? (typeof localStorage === 'undefined' ? undefined : localStorage);
+
+  if (!target) {
+    return undefined;
+  }
+
+  try {
+    const raw = target.getItem(BUILD_MODE_STORAGE_KEY);
+
+    return BUILD_MODES.some((mode) => mode.id === raw) ? (raw as BuildMode) : undefined;
+  } catch {
+    return undefined;
+  }
+}
+
+export function writePersistedBuildMode(mode: BuildMode, storage?: StorageLike): void {
+  const target = storage ?? (typeof localStorage === 'undefined' ? undefined : localStorage);
+
+  if (!target) {
+    return;
+  }
+
+  try {
+    target.setItem(BUILD_MODE_STORAGE_KEY, mode);
+  } catch {
+    /**
+     * The browser refuses storage (private mode, quota), the mode is then
+     * only kept for the session.
+     */
+  }
+}
+
+/**
+ * The build mode survives a reload, it is restored before the first message is
+ * composed and it never interacts with the provider settings.
+ */
+export const buildModeStore = atom<BuildMode>(readPersistedBuildMode() ?? 'app');
+
+/**
+ * Picks a build mode and persists the choice.
+ */
+export function setBuildMode(mode: BuildMode): void {
+  buildModeStore.set(mode);
+  writePersistedBuildMode(mode);
+}
 
 export interface ChatOptions {
   /**

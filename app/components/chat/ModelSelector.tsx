@@ -7,6 +7,7 @@ import { PROVIDER_DEFINITIONS, type DiscoveredModel } from '~/lib/providers/type
 import { chatOptionsStore } from '~/lib/stores/buildMode';
 import { modelsStore } from '~/lib/stores/models';
 import { providersStore } from '~/lib/stores/providers';
+import { selectModel as persistModelSelection } from '~/lib/stores/selection';
 import { classNames } from '~/utils/classNames';
 
 interface ModelSelectorProps {
@@ -40,7 +41,7 @@ interface DropdownPosition {
  * or Escape.
  */
 export function ModelSelector({ providerId }: ModelSelectorProps) {
-  const { models, defaultModelId, loaded } = useStore(modelsStore);
+  const { models, defaultModelId, loaded, unavailableModelId } = useStore(modelsStore);
   const { providers, defaultProviderId } = useStore(providersStore);
   const { modelId } = useStore(chatOptionsStore);
 
@@ -143,7 +144,12 @@ export function ModelSelector({ providerId }: ModelSelectorProps) {
   };
 
   const selectModel = (id: string) => {
-    chatOptionsStore.setKey('modelId', id.trim());
+    /**
+     * The choice is stored together with the provider it belongs to, so it
+     * survives a reload and can never be replayed against another provider.
+     */
+    persistModelSelection(id.trim());
+    modelsStore.setKey('unavailableModelId', undefined);
     close();
   };
 
@@ -258,6 +264,12 @@ export function ModelSelector({ providerId }: ModelSelectorProps) {
       >
         <div className="i-ph:sparkle text-base" />
         <span className="max-w-[140px] truncate">{selected?.label ?? effectiveModelId ?? 'Select model'}</span>
+        {effectiveModelId !== undefined && effectiveModelId === unavailableModelId && (
+          <div
+            className="i-ph:warning-circle-bold text-bolt-elements-icon-error"
+            title="This saved model is not available for the configured provider. Pick another model."
+          />
+        )}
         <div className={classNames('i-ph:caret-down text-sm transition-transform', { 'rotate-180': open })} />
       </button>
 
@@ -330,6 +342,7 @@ export function ModelSelector({ providerId }: ModelSelectorProps) {
               {list.map((model, index) => {
                 const isSelected = model.id === effectiveModelId;
                 const isActive = index === activeIndex;
+                const isUnavailable = model.id === unavailableModelId;
 
                 return (
                   <button
@@ -351,6 +364,12 @@ export function ModelSelector({ providerId }: ModelSelectorProps) {
                       {model.label}
                     </span>
                     <span className="flex items-center gap-1.5 shrink-0">
+                      {isUnavailable && (
+                        <span
+                          className="i-ph:warning-circle-bold text-bolt-elements-icon-error text-[10px]"
+                          title="Not available for the configured provider"
+                        />
+                      )}
                       {model.isFree && (
                         <span className="rounded-full bg-bolt-elements-item-backgroundAccent px-1.5 py-0.5 text-[10px] uppercase tracking-wide text-bolt-elements-item-contentAccent">
                           Free

@@ -11,6 +11,12 @@ export interface ModelsState {
   /** The model the server uses when the client does not request one. */
   defaultModelId: string | undefined;
 
+  /**
+   * A restored selection that is not part of the catalogue of the configured
+   * provider. It is shown with a warning instead of being silently replaced.
+   */
+  unavailableModelId?: string;
+
   /** Whether the catalogue has been loaded. */
   loaded: boolean;
 }

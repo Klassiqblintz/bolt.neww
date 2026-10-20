@@ -7,6 +7,7 @@ import { Menu } from '~/components/sidebar/Menu.client';
 import { IconButton } from '~/components/ui/IconButton';
 import { Workbench } from '~/components/workbench/Workbench.client';
 import { buildModeStore, chatOptionsStore } from '~/lib/stores/buildMode';
+import { modelsStore } from '~/lib/stores/models';
 import { showWorkbenchStore } from '~/lib/stores/workbenchVisibility';
 import { classNames } from '~/utils/classNames';
 import { BuildModeSelector, getPlaceholderForMode } from './BuildModeSelector';
@@ -67,6 +68,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
 
     const buildMode = useStore(buildModeStore);
     const { planningMode } = useStore(chatOptionsStore);
+    const { unavailableModelId } = useStore(modelsStore);
     const showWorkbench = useStore(showWorkbenchStore);
 
     return (
@@ -134,6 +136,18 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                     'shadow-sm border border-bolt-elements-borderColor bg-bolt-elements-prompt-background backdrop-filter backdrop-blur-[8px] rounded-2xl sm:rounded-3xl overflow-hidden',
                   )}
                 >
+                  {unavailableModelId && (
+                    <div
+                      role="status"
+                      className="flex items-start gap-2 px-4 sm:px-5 pt-4 text-sm text-bolt-elements-icon-error"
+                    >
+                      <div className="i-ph:warning-circle-bold text-base shrink-0 mt-px" />
+                      <span className="flex-1">
+                        The saved model “{unavailableModelId}” is not available for the configured provider. Pick
+                        another model in the dropdown.
+                      </span>
+                    </div>
+                  )}
                   {errorMessage && (
                     <div
                       role="alert"

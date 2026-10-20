@@ -24,6 +24,10 @@ export const ERROR_CODES = {
 
   RATE_LIMITED: 'rate_limited',
 
+  /** The provider account needs credits or a subscription for this model. */
+
+  PAYMENT_REQUIRED: 'payment_required',
+
   /** The request itself was invalid. */
 
   INVALID_REQUEST: 'invalid_request',

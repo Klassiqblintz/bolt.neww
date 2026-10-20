@@ -1,6 +1,6 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { StreamingTextResponse, parseStreamPart } from 'ai';
-import { toAppError } from '~/lib/.server/llm/errors';
+import { ModelUnavailableError, toAppError } from '~/lib/.server/llm/errors';
 import { getProviderId } from '~/lib/.server/llm/provider';
 import { redactValue } from '~/lib/.server/llm/redact';
 import { streamText } from '~/lib/.server/llm/stream-text';
@@ -24,6 +24,12 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
    */
   const env = context.cloudflare?.env ?? ({} as Env);
 
+  /**
+   * Whether the request named a user managed provider. Hoisted so the error
+   * handler can report the failure against the right kind of credential.
+   */
+  let userManaged = false;
+
   try {
     const { message, modelId, provider } =
       (await request.json<{
@@ -43,9 +49,12 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
     }
 
     const userApiKey = request.headers.get(PROVIDER_KEY_HEADER) ?? undefined;
+    const spec = normalizeProviderSpec(provider);
+
+    userManaged = Boolean(spec);
 
     const resolved = resolveProvider({
-      spec: normalizeProviderSpec(provider),
+      spec,
       apiKey: userApiKey,
       env,
       serverModelId: modelId,
@@ -90,17 +99,17 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
   } catch (error) {
     console.error('Prompt enhancement failed\n\n', redactValue(error));
 
-    if (error instanceof InvalidProviderError) {
+    if (error instanceof InvalidProviderError || error instanceof ModelUnavailableError) {
       return new Response(
         formatError({
-          code: ERROR_CODES.INVALID_REQUEST,
+          code: error instanceof ModelUnavailableError ? ERROR_CODES.MODEL_UNAVAILABLE : ERROR_CODES.INVALID_REQUEST,
           message: error.message,
         }),
         { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
       );
     }
 
-    const appError = toAppError(error, { provider: getProviderId(env) });
+    const appError = toAppError(error, { provider: getProviderId(env), userManaged });
 
     return new Response(formatError(appError), {
       status: appError.code === ERROR_CODES.NOT_CONFIGURED ? 503 : 500,

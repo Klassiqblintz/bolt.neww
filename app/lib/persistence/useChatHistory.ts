@@ -4,6 +4,7 @@ import { atom } from 'nanostores';
 import type { Message } from 'ai';
 import { toast } from 'react-toastify';
 import { workbenchStore } from '~/lib/stores/workbench';
+import { recordChatOpened } from '~/lib/stores/recentlyViewed';
 import { getMessages, getNextId, getUrlId, openDatabase, setMessages } from './db';
 
 export interface ChatHistoryItem {
@@ -48,6 +49,12 @@ export function useChatHistory() {
             setUrlId(storedMessages.urlId);
             description.set(storedMessages.description);
             chatId.set(storedMessages.id);
+
+            /**
+             * Records the opening so the "Recently viewed" destination
+             * reflects what the user actually opened.
+             */
+            recordChatOpened(storedMessages.id);
           } else {
             navigate(`/`, { replace: true });
           }

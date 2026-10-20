@@ -14,8 +14,23 @@ import {
   buildModeStore,
   getBuildModeInstruction,
   PLANNING_INSTRUCTION,
+  readPersistedBuildMode,
+  writePersistedBuildMode,
   type BuildMode,
+  type StorageLike,
 } from '~/lib/stores/buildMode';
+
+function createStorage(seed: Record<string, string> = {}): StorageLike & { data: Record<string, string> } {
+  const data: Record<string, string> = { ...seed };
+
+  return {
+    data,
+    getItem: (key) => (key in data ? data[key] : null),
+    setItem: (key, value) => {
+      data[key] = value;
+    },
+  };
+}
 
 describe('build modes', () => {
   it('offers exactly the four supported modes', () => {
@@ -55,6 +70,32 @@ describe('build modes', () => {
     for (const instruction of instructions) {
       expect(instruction.length).toBeGreaterThan(20);
     }
+  });
+});
+
+describe('build mode persistence', () => {
+  it('restores a persisted mode (simulated reload)', () => {
+    const storage = createStorage();
+
+    writePersistedBuildMode('slides', storage);
+
+    /** A fresh reader over the same data models a new page load. */
+    expect(readPersistedBuildMode(createStorage({ ...storage.data }))).toBe('slides');
+  });
+
+  it('persists every supported mode', () => {
+    for (const mode of BUILD_MODES) {
+      const storage = createStorage();
+
+      writePersistedBuildMode(mode.id, storage);
+
+      expect(readPersistedBuildMode(storage)).toBe(mode.id);
+    }
+  });
+
+  it('ignores an unknown or corrupted value instead of breaking the composer', () => {
+    expect(readPersistedBuildMode(createStorage({ bolt_build_mode: 'hologram' }))).toBeUndefined();
+    expect(readPersistedBuildMode(undefined)).toBeUndefined();
   });
 });
 

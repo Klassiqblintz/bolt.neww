@@ -1,8 +1,9 @@
 import { createAnthropic } from '@ai-sdk/anthropic';
 import { createOpenAI } from '@ai-sdk/openai';
 import type { LanguageModelV1 } from '@ai-sdk/provider';
-import { getDefaultModelId, getModelsForProvider, isValidModelId, type ModelInfo, type ProviderId } from '~/lib/models';
+import { getDefaultModelId, getModelsForProvider, type ModelInfo, type ProviderId } from '~/lib/models';
 import { getAPIKey } from '~/lib/.server/llm/api-key';
+import { ModelUnavailableError } from '~/lib/.server/llm/errors';
 import { getProviderId, readEnvValue } from '~/lib/.server/llm/provider';
 
 const OPENROUTER_BASE_URL = 'https://openrouter.ai/api/v1';
@@ -67,7 +68,9 @@ export function getProviderConfig(cloudflareEnv: Env): ProviderConfig {
  *
  * The optional `modelId` comes from the client and is validated against the
  * catalogue of the *configured* provider, so a model of another provider can
- * never be requested.
+ * never be requested. An unknown model is reported instead of being silently
+ * replaced by the provider default, because a surprise model switch produces
+ * code the user never asked for.
  */
 export function getLanguageModel(cloudflareEnv: Env, modelId?: string): LanguageModelV1 {
   const config = getProviderConfig(cloudflareEnv);
@@ -79,12 +82,31 @@ export function getLanguageModel(cloudflareEnv: Env, modelId?: string): Language
   return createAnthropicModel(cloudflareEnv, config, modelId);
 }
 
+/**
+ * Resolves the requested model against the catalogue of the provider,
+ * including the `AI_MODELS` allow list. A model the client may not use is
+ * reported instead of being sent.
+ */
+function resolveModelId(config: ProviderConfig, modelId?: string): string {
+  if (modelId === undefined || modelId === '') {
+    return config.defaultModelId;
+  }
+
+  if (!config.models.some((model) => model.id === modelId)) {
+    throw new ModelUnavailableError(
+      `The model "${modelId}" is not available for the ${config.id} provider. Pick a model from the list and try again.`,
+    );
+  }
+
+  return modelId;
+}
+
 function createAnthropicModel(cloudflareEnv: Env, config: ProviderConfig, modelId?: string): LanguageModelV1 {
   const anthropic = createAnthropic({
     apiKey: config.apiKey,
   });
 
-  const model = isValidModelId('anthropic', modelId) ? modelId : config.defaultModelId;
+  const model = resolveModelId(config, modelId);
 
   return anthropic(model);
 }
@@ -118,7 +140,7 @@ function createOpenRouterModel(cloudflareEnv: Env, config: ProviderConfig, model
     compatibility: 'compatible',
   });
 
-  const model = isValidModelId('openrouter', modelId) ? modelId : config.defaultModelId;
+  const model = resolveModelId(config, modelId);
 
   return openrouter(model);
 }

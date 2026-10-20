@@ -253,7 +253,46 @@ describe('user provider routing', () => {
     expect((actions[0] as { filePath?: string }).filePath).toBe('/home/project/index.html');
   });
 
-  it('does not leak the user key in an error response', async () => {
+  it('uses a custom model of a user provider even though it is not in the built-in catalogue', async () => {
+    /**
+     * Regression: a custom compatible provider serves models the built-in
+     * catalogue knows nothing about. That model must reach the provider
+     * request instead of being rejected by the catalogue of a built-in
+     * provider.
+     */
+    let requestedBody = '';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (_url: string, init: { body?: string }) => {
+        requestedBody = init.body ?? '';
+
+        return new Response(OPENAI_STREAM, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }),
+    );
+
+    const response = await chatAction({
+      context,
+      request: new Request('https://example.com/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bolt-provider-key': 'sk-user' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'hello' }],
+          provider: { type: 'openai-compatible', baseUrl: 'https://api.example.com/v1' },
+          modelId: 'my-company/internal-model-v2',
+        }),
+      }),
+      params: {},
+    } as never);
+
+    expect(response.status).toBe(200);
+    expect(JSON.parse(requestedBody).model).toBe('my-company/internal-model-v2');
+  });
+
+  it('never leaks the user key in an error response', async () => {
     vi.stubGlobal(
       'fetch',
       vi.fn().mockResolvedValue(
@@ -515,6 +554,63 @@ describe('openrouter requests', () => {
 });
 
 describe('POST /api/chat', () => {
+  it('rejects an unknown model for the server provider instead of silently switching', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-api03-test-key';
+
+    const fetchSpy = vi.fn();
+
+    vi.stubGlobal('fetch', fetchSpy);
+
+    const response = await chatAction({
+      context,
+      request: chatRequest({
+        messages: [{ role: 'user', content: 'hello' }],
+        modelId: 'openai/gpt-4o',
+      }),
+      params: {},
+    } as never);
+
+    expect(response.status).toBe(400);
+
+    const { code, message } = parseError(await response.text());
+
+    expect(code).toBe(ERROR_CODES.MODEL_UNAVAILABLE);
+    expect(message).toContain('openai/gpt-4o');
+
+    /** The request must never have reached a provider. */
+    expect(fetchSpy).not.toHaveBeenCalled();
+  });
+
+  it('reports a provider error with its real cause instead of a bare failure', async () => {
+    process.env.AI_PROVIDER = 'openrouter';
+    process.env.OPENROUTER_API_KEY = 'sk-or-test-key';
+
+    /**
+     * Simulates a retryable upstream failure: the AI SDK retries and then
+     * throws a RetryError that hides the status. The client must still see
+     * the real classification, not "the request failed".
+     */
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockResolvedValue(
+        new Response(JSON.stringify({ error: { message: 'no providers are available' } }), {
+          status: 503,
+          headers: { 'Content-Type': 'application/json' },
+        }),
+      ),
+    );
+
+    const response = await chatAction({
+      context,
+      request: chatRequest({ messages: [{ role: 'user', content: 'hello' }] }),
+      params: {},
+    } as never);
+
+    const { code } = parseError(await response.text());
+
+    expect(code).toBe(ERROR_CODES.PROVIDER_ERROR);
+  }, 20000);
+
   it('reports a missing provider configuration instead of an empty error', async () => {
     const response = await chatAction({
       context,

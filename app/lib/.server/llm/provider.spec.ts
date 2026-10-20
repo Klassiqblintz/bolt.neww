@@ -166,19 +166,34 @@ describe('language model', () => {
     expect(model.modelId).toBe('claude-3-opus-20240229');
   });
 
-  it('ignores a model of another provider', () => {
+  it('reports a model of another provider instead of silently switching', () => {
     process.env.AI_PROVIDER = 'openrouter';
 
-    const model = getLanguageModel(emptyEnv, 'claude-3-opus-20240229');
-
-    expect(model.modelId).not.toBe('claude-3-opus-20240229');
-    expect(model.modelId.startsWith('anthropic/') || model.modelId.startsWith('openai/')).toBe(true);
+    /**
+     * A silent fallback would generate code with a model the user never
+     * picked, so the request is rejected with a clear message instead.
+     */
+    expect(() => getLanguageModel(emptyEnv, 'claude-3-opus-20240229')).toThrow(
+      /not available for the openrouter provider/,
+    );
   });
 
-  it('falls back to the default for an unknown model', () => {
-    const model = getLanguageModel(emptyEnv, 'made-up-model');
+  it('reports an unknown model instead of falling back to the default', () => {
+    expect(() => getLanguageModel(emptyEnv, 'made-up-model')).toThrow(/not available for the anthropic provider/);
+  });
 
-    expect(model.modelId).toBe(getModelsForProvider('anthropic')[0].id);
+  it('reports a model that the allow list removed', () => {
+    process.env.AI_MODELS = 'claude-3-5-sonnet-20240620';
+
+    expect(() => getLanguageModel(emptyEnv, 'claude-3-opus-20240229')).toThrow(/not available/);
+  });
+
+  it('still falls back to the default when no model was requested', () => {
+    process.env.AI_MODELS = 'claude-3-5-sonnet-20240620';
+
+    const model = getLanguageModel(emptyEnv);
+
+    expect(model.modelId).toBe('claude-3-5-sonnet-20240620');
   });
 
   it('does not leak the key through the model', () => {
