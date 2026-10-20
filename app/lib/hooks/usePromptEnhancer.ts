@@ -1,6 +1,8 @@
 import { useState } from 'react';
 import { toast } from 'react-toastify';
 import { parseError } from '~/lib/errors';
+import { getProviderHeaders, getProviderSpec } from '~/lib/providers/client';
+import { getActiveProvider } from '~/lib/providers/client';
 import { chatOptionsStore } from '~/lib/stores/buildMode';
 import { createScopedLogger } from '~/utils/logger';
 
@@ -22,11 +24,15 @@ export function usePromptEnhancer() {
     const originalInput = input;
 
     try {
+      const provider = getActiveProvider();
+
       const response = await fetch('/api/enhancer', {
         method: 'POST',
+        headers: getProviderHeaders(provider),
         body: JSON.stringify({
           message: input,
           modelId: chatOptionsStore.get().modelId,
+          provider: getProviderSpec(provider),
         }),
       });
 

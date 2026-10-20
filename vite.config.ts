@@ -1,9 +1,10 @@
 import { cloudflareDevProxyVitePlugin as remixCloudflareDevProxy, vitePlugin as remixVitePlugin } from '@remix-run/dev';
 import UnoCSS from 'unocss/vite';
-import { defineConfig, type ViteDevServer } from 'vite';
+import { defineConfig, transformWithEsbuild, type ViteDevServer } from 'vite';
 import { nodePolyfills } from 'vite-plugin-node-polyfills';
 import { optimizeCssModules } from 'vite-plugin-optimize-css-modules';
 import tsconfigPaths from 'vite-tsconfig-paths';
+import fs from 'node:fs/promises';
 
 export default defineConfig((config) => {
   return {
@@ -33,9 +34,46 @@ export default defineConfig((config) => {
       tsconfigPaths(),
       chrome129IssuePlugin(),
       config.mode === 'production' && optimizeCssModules({ apply: 'build' }),
+      config.mode === 'test' && restoreClientModulesPlugin(),
     ],
   };
 });
+
+/**
+ * The Remix plugin replaces `.client` modules with empty modules while it
+ * builds for the server, so they never end up in the server bundle.
+ *
+ * The test run uses the same plugin, which would make the browser only
+ * modules untestable. This plugin restores their original source, so they can
+ * be unit tested with a stubbed browser environment.
+ */
+function restoreClientModulesPlugin() {
+  const clientFileRE = /\.client(\.[cm]?[jt]sx?)?$/;
+  const clientDirRE = /\/\.client\//;
+
+  return {
+    name: 'restore-client-modules-in-tests',
+    async transform(code: string, id: string, options: { ssr?: boolean } | undefined) {
+      if (!options?.ssr) {
+        return undefined;
+      }
+
+      const [filepath] = id.split('?');
+
+      if (!clientFileRE.test(filepath) && !clientDirRE.test(filepath)) {
+        return undefined;
+      }
+
+      const source = await fs.readFile(filepath, 'utf8');
+
+      const loader = filepath.endsWith('.tsx') ? 'tsx' : filepath.endsWith('.jsx') ? 'jsx' : 'ts';
+
+      const result = await transformWithEsbuild(source, filepath, { loader, target: 'esnext' });
+
+      return { code: result.code, map: result.map };
+    },
+  };
+}
 
 function chrome129IssuePlugin() {
   return {

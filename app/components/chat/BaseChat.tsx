@@ -12,6 +12,7 @@ import { classNames } from '~/utils/classNames';
 import { BuildModeSelector, getPlaceholderForMode } from './BuildModeSelector';
 import { Messages } from './Messages.client';
 import { ModelSelector } from './ModelSelector';
+import { ProviderIndicator } from './ProviderIndicator';
 import { RecentlyViewed } from './RecentlyViewed';
 import { SendButton } from './SendButton.client';
 
@@ -254,6 +255,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                         <span>Plan</span>
                       </button>
                       <ClientOnly>{() => <ModelSelector />}</ClientOnly>
+                      <ClientOnly>{() => <ProviderIndicator />}</ClientOnly>
                     </div>
                   </div>
                 </div>

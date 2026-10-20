@@ -20,6 +20,15 @@ export interface ModelInfo {
 
   /** The model can stream its response. */
   supportsStreaming: boolean;
+
+  /** The context window, if the provider reports it. */
+  contextLength?: number;
+
+  /**
+   * Only true when the provider metadata explicitly reports that the model
+   * has no usage cost. It is never inferred from the model name.
+   */
+  isFree?: boolean;
 }
 
 export interface ProviderInfo {

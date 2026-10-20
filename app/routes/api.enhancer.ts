@@ -2,8 +2,11 @@ import { type ActionFunctionArgs } from '@remix-run/cloudflare';
 import { StreamingTextResponse, parseStreamPart } from 'ai';
 import { toAppError } from '~/lib/.server/llm/errors';
 import { getProviderId } from '~/lib/.server/llm/provider';
+import { redactValue } from '~/lib/.server/llm/redact';
 import { streamText } from '~/lib/.server/llm/stream-text';
+import { InvalidProviderError, resolveProvider } from '~/lib/.server/llm/user-provider';
 import { ERROR_CODES, formatError } from '~/lib/errors';
+import { isProviderType, PROVIDER_KEY_HEADER, type ProviderRequestSpec } from '~/lib/providers/types';
 import { stripIndents } from '~/utils/stripIndent';
 
 const encoder = new TextEncoder();
@@ -16,13 +19,18 @@ export async function action(args: ActionFunctionArgs) {
 async function enhancerAction({ context, request }: ActionFunctionArgs) {
   /**
    * `context.cloudflare` is only present when running on Cloudflare. On other
-   * runtimes (e.g. the Node build used by Vercel) the API key is read from the
-   * process environment instead.
+   * runtimes (e.g. the Node build used by Vercel) the configuration is read
+   * from the process environment instead.
    */
   const env = context.cloudflare?.env ?? ({} as Env);
 
   try {
-    const { message, modelId } = await request.json<{ message: string; modelId?: string }>();
+    const { message, modelId, provider } =
+      (await request.json<{
+        message: string;
+        modelId?: string;
+        provider?: ProviderRequestSpec;
+      }>()) ?? {};
 
     if (typeof message !== 'string' || message.trim().length === 0) {
       return new Response(
@@ -33,6 +41,15 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
         { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
       );
     }
+
+    const userApiKey = request.headers.get(PROVIDER_KEY_HEADER) ?? undefined;
+
+    const resolved = resolveProvider({
+      spec: normalizeProviderSpec(provider),
+      apiKey: userApiKey,
+      env,
+      serverModelId: modelId,
+    });
 
     const result = await streamText(
       [
@@ -50,7 +67,7 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
         },
       ],
       env,
-      modelId,
+      { model: resolved.model },
     );
 
     const transformStream = new TransformStream({
@@ -71,7 +88,17 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
 
     return new StreamingTextResponse(transformedStream);
   } catch (error) {
-    console.error('Prompt enhancement failed\n\n', error);
+    console.error('Prompt enhancement failed\n\n', redactValue(error));
+
+    if (error instanceof InvalidProviderError) {
+      return new Response(
+        formatError({
+          code: ERROR_CODES.INVALID_REQUEST,
+          message: error.message,
+        }),
+        { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+      );
+    }
 
     const appError = toAppError(error, { provider: getProviderId(env) });
 
@@ -82,4 +109,22 @@ async function enhancerAction({ context, request }: ActionFunctionArgs) {
       },
     });
   }
+}
+
+function normalizeProviderSpec(provider: unknown): ProviderRequestSpec | undefined {
+  if (!provider || typeof provider !== 'object') {
+    return undefined;
+  }
+
+  const spec = provider as Partial<ProviderRequestSpec>;
+
+  if (!isProviderType(spec.type)) {
+    return undefined;
+  }
+
+  return {
+    type: spec.type,
+    baseUrl: typeof spec.baseUrl === 'string' ? spec.baseUrl : undefined,
+    modelId: typeof spec.modelId === 'string' ? spec.modelId : undefined,
+  };
 }

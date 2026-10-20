@@ -3,9 +3,12 @@ import { toAppError } from '~/lib/.server/llm/errors';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/.server/llm/prompts';
 import { getProviderId } from '~/lib/.server/llm/provider';
+import { redactValue } from '~/lib/.server/llm/redact';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
+import { InvalidProviderError, resolveProvider } from '~/lib/.server/llm/user-provider';
 import SwitchableStream from '~/lib/.server/llm/switchable-stream';
 import { ERROR_CODES, formatError } from '~/lib/errors';
+import { isProviderType, PROVIDER_KEY_HEADER, type ProviderRequestSpec } from '~/lib/providers/types';
 
 export async function action(args: ActionFunctionArgs) {
   return chatAction(args);
@@ -22,7 +25,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   const stream = new SwitchableStream();
 
   try {
-    const { messages, modelId } = await request.json<{ messages: Messages; modelId?: string }>();
+    const { messages, modelId, provider } =
+      (await request.json<{
+        messages: Messages;
+        modelId?: string;
+        provider?: ProviderRequestSpec;
+      }>()) ?? {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
       return new Response(
@@ -33,6 +41,19 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
       );
     }
+
+    /**
+     * The API key of a user provider is only used for this request. It is
+     * never stored and never written to a log.
+     */
+    const userApiKey = request.headers.get(PROVIDER_KEY_HEADER) ?? undefined;
+
+    const resolved = resolveProvider({
+      spec: normalizeProviderSpec(provider),
+      apiKey: userApiKey,
+      env: cloudflareEnv,
+      serverModelId: modelId,
+    });
 
     const options: StreamingOptions = {
       toolChoice: 'none',
@@ -52,13 +73,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         messages.push({ role: 'assistant', content });
         messages.push({ role: 'user', content: CONTINUE_PROMPT });
 
-        const result = await streamText(messages, cloudflareEnv, modelId, options);
+        const result = await streamText(messages, cloudflareEnv, { model: resolved.model }, options);
 
         return stream.switchSource(result.toAIStream());
       },
     };
 
-    const result = await streamText(messages, cloudflareEnv, modelId, options);
+    const result = await streamText(messages, cloudflareEnv, { model: resolved.model }, options);
 
     stream.switchSource(result.toAIStream());
 
@@ -69,7 +90,21 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       },
     });
   } catch (error) {
-    console.error('Chat request failed\n\n', error);
+    /**
+     * The error is redacted before it is logged, so that no key material can
+     * end up in the server logs.
+     */
+    console.error('Chat request failed\n\n', redactValue(error));
+
+    if (error instanceof InvalidProviderError) {
+      return new Response(
+        formatError({
+          code: ERROR_CODES.INVALID_REQUEST,
+          message: error.message,
+        }),
+        { status: 400, headers: { 'Content-Type': 'text/plain; charset=utf-8' } },
+      );
+    }
 
     const appError = toAppError(error, { provider: getProviderId(cloudflareEnv) });
 
@@ -80,4 +115,25 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       },
     });
   }
+}
+
+/**
+ * Makes sure the provider specification from the client is well formed.
+ */
+function normalizeProviderSpec(provider: unknown): ProviderRequestSpec | undefined {
+  if (!provider || typeof provider !== 'object') {
+    return undefined;
+  }
+
+  const spec = provider as Partial<ProviderRequestSpec>;
+
+  if (!isProviderType(spec.type)) {
+    return undefined;
+  }
+
+  return {
+    type: spec.type,
+    baseUrl: typeof spec.baseUrl === 'string' ? spec.baseUrl : undefined,
+    modelId: typeof spec.modelId === 'string' ? spec.modelId : undefined,
+  };
 }

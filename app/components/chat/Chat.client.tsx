@@ -7,8 +7,10 @@ import { cssTransition, toast, ToastContainer } from 'react-toastify';
 import { useMessageParser, useModels, usePromptEnhancer, useShortcuts, useSnapScroll } from '~/lib/hooks';
 import { parseError } from '~/lib/errors';
 import { useChatHistory } from '~/lib/persistence';
+import { getProviderHeaders, getProviderSpec, loadProviders } from '~/lib/providers/client';
 import { chatStore } from '~/lib/stores/chat';
 import { buildContextPrefix, buildModeStore, chatOptionsStore } from '~/lib/stores/buildMode';
+import { providersStore } from '~/lib/stores/providers';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { fileModificationsToHTML } from '~/utils/diff';
 import { cubicEasingFn } from '~/utils/easings';
@@ -96,11 +98,35 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
    */
   const { modelId } = useStore(chatOptionsStore);
 
-  const requestBody = useMemo(() => ({ modelId }), [modelId]);
+  /**
+   * The provider the user configured. It is used for the request when one is
+   * set, otherwise the server configured provider is the fallback.
+   */
+  const { providers, defaultProviderId } = useStore(providersStore);
+
+  const activeProvider = useMemo(
+    () => providers.find((provider) => provider.id === defaultProviderId) ?? providers[0],
+    [providers, defaultProviderId],
+  );
+
+  useEffect(() => {
+    loadProviders().catch((error) => console.error('Failed to load the providers', error));
+  }, []);
+
+  const requestBody = useMemo(
+    () => ({
+      modelId,
+      provider: getProviderSpec(activeProvider),
+    }),
+    [modelId, activeProvider],
+  );
+
+  const requestHeaders = useMemo(() => getProviderHeaders(activeProvider), [activeProvider]);
 
   const { messages, isLoading, input, handleInputChange, setInput, stop, append } = useChat({
     api: '/api/chat',
     body: requestBody,
+    headers: requestHeaders,
     onError: (error) => {
       logger.error('Request failed\n\n', error);
 

@@ -110,13 +110,20 @@ export function Menu() {
     >
       <div className="flex items-center h-[var(--header-height)]">{/* Placeholder */}</div>
       <div className="flex-1 flex flex-col h-full w-full overflow-hidden">
-        <div className="p-4">
+        <div className="p-4 flex flex-col gap-1">
           <a
             href="/"
             className="flex gap-2 items-center bg-bolt-elements-sidebar-buttonBackgroundDefault text-bolt-elements-sidebar-buttonText hover:bg-bolt-elements-sidebar-buttonBackgroundHover rounded-md p-2 transition-theme"
           >
             <span className="inline-block i-bolt:chat scale-110" />
             Start new chat
+          </a>
+          <a
+            href="/providers"
+            className="flex gap-2 items-center text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-item-backgroundActive rounded-md p-2 transition-theme"
+          >
+            <span className="inline-block i-ph:plugs scale-110" />
+            AI providers
           </a>
         </div>
         <div className="text-bolt-elements-textPrimary font-medium pl-6 pr-5 my-2">Your Chats</div>
