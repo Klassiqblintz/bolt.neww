@@ -8,6 +8,7 @@ import {
   MODEL_SELECTION_STORAGE_KEY,
   readPersistedSelection,
   restoreModelSelection,
+  revalidateSelectedModel,
   selectModel,
   writePersistedSelection,
   type StorageLike,
@@ -300,6 +301,63 @@ describe('provider switching', () => {
     applyActiveProvider('server:anthropic');
 
     expect(chatOptionsStore.get().modelId).toBe('claude-3-opus-20240229');
+  });
+});
+
+describe('re-checking after a catalogue refresh', () => {
+  it('clears the warning when the selected model is part of the catalogue', () => {
+    useServerProvider('openrouter');
+    chatOptionsStore.setKey('modelId', 'openai/gpt-4o');
+    modelsStore.setKey('unavailableModelId', 'openai/gpt-4o');
+
+    revalidateSelectedModel();
+
+    expect(modelsStore.get().unavailableModelId).toBeUndefined();
+  });
+
+  it('reports a model the provider no longer offers', () => {
+    useServerProvider('openrouter');
+    chatOptionsStore.setKey('modelId', 'openai/model-that-was-retired');
+
+    revalidateSelectedModel();
+
+    expect(modelsStore.get().unavailableModelId).toBe('openai/model-that-was-retired');
+  });
+
+  it('reports a model of a different provider', () => {
+    useServerProvider('anthropic');
+    chatOptionsStore.setKey('modelId', 'openai/gpt-4o');
+
+    revalidateSelectedModel();
+
+    expect(modelsStore.get().unavailableModelId).toBe('openai/gpt-4o');
+  });
+
+  it('clears the warning when nothing is selected', () => {
+    useServerProvider('openrouter');
+    modelsStore.setKey('unavailableModelId', 'openai/gpt-4o');
+
+    revalidateSelectedModel();
+
+    expect(modelsStore.get().unavailableModelId).toBeUndefined();
+  });
+
+  it('does not warn before the catalogue has been loaded', () => {
+    modelsStore.set({ provider: 'openrouter', models: [], defaultModelId: undefined, loaded: false });
+    chatOptionsStore.setKey('modelId', 'openai/model-that-was-retired');
+
+    revalidateSelectedModel();
+
+    expect(modelsStore.get().unavailableModelId).toBeUndefined();
+  });
+
+  it('keeps the model selected so the user can see what was saved', () => {
+    useServerProvider('openrouter');
+    chatOptionsStore.setKey('modelId', 'openai/model-that-was-retired');
+
+    revalidateSelectedModel();
+
+    expect(chatOptionsStore.get().modelId).toBe('openai/model-that-was-retired');
   });
 });
 

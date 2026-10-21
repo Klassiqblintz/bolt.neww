@@ -8,6 +8,7 @@ import {
   PLANNING_INSTRUCTION,
   type BuildMode,
 } from '~/lib/buildModes';
+import { getLocalStorage, type StorageLike } from '~/lib/storage';
 
 export {
   BUILD_MODES,
@@ -21,25 +22,19 @@ export {
 
 const BUILD_MODE_STORAGE_KEY = 'bolt_build_mode';
 
-/** The minimal storage surface, so the logic can be tested without a browser. */
-export interface StorageLike {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-}
+export type { StorageLike };
 
 /**
  * Reads the persisted build mode. Unknown or corrupted values are ignored, a
  * broken entry must never break the composer.
  */
-export function readPersistedBuildMode(storage?: StorageLike): BuildMode | undefined {
-  const target = storage ?? (typeof localStorage === 'undefined' ? undefined : localStorage);
-
-  if (!target) {
+export function readPersistedBuildMode(storage: StorageLike | undefined = getLocalStorage()): BuildMode | undefined {
+  if (!storage) {
     return undefined;
   }
 
   try {
-    const raw = target.getItem(BUILD_MODE_STORAGE_KEY);
+    const raw = storage.getItem(BUILD_MODE_STORAGE_KEY);
 
     return isBuildMode(raw) ? raw : undefined;
   } catch {
@@ -47,15 +42,13 @@ export function readPersistedBuildMode(storage?: StorageLike): BuildMode | undef
   }
 }
 
-export function writePersistedBuildMode(mode: BuildMode, storage?: StorageLike): void {
-  const target = storage ?? (typeof localStorage === 'undefined' ? undefined : localStorage);
-
-  if (!target) {
+export function writePersistedBuildMode(mode: BuildMode, storage: StorageLike | undefined = getLocalStorage()): void {
+  if (!storage) {
     return;
   }
 
   try {
-    target.setItem(BUILD_MODE_STORAGE_KEY, mode);
+    storage.setItem(BUILD_MODE_STORAGE_KEY, mode);
   } catch {
     /**
      * The browser refuses storage (private mode, quota), the mode is then

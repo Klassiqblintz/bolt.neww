@@ -10,6 +10,9 @@ function createStorage(seed: Record<string, string> = {}): StorageLike & { data:
     setItem: (key, value) => {
       data[key] = value;
     },
+    removeItem: (key) => {
+      delete data[key];
+    },
   };
 }
 

@@ -1,7 +1,7 @@
 import { useEffect } from 'react';
 import type { ModelInfo, ProviderId } from '~/lib/models';
 import { modelsStore } from '~/lib/stores/models';
-import { initSelectionPersistence } from '~/lib/stores/selection';
+import { initSelectionPersistence, revalidateSelectedModel } from '~/lib/stores/selection';
 
 /**
  * Loads the models of the configured provider from the server and restores
@@ -45,6 +45,14 @@ export function useModels() {
           defaultModelId: data.defaultModelId,
           loaded: true,
         });
+
+        /**
+         * Replacing the catalogue clears the unavailable warning along with
+         * the rest of the store, so the selected model is checked against the
+         * new list. A model the provider no longer offers is reported instead
+         * of being left to fail silently on the next request.
+         */
+        revalidateSelectedModel();
 
         /**
          * The selected model is intentionally never set from the catalogue.

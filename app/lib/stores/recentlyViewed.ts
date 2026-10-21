@@ -1,3 +1,5 @@
+import { getLocalStorage, type StorageLike } from '~/lib/storage';
+
 /**
  * Tracks when a conversation was last opened.
  *
@@ -10,21 +12,9 @@ export const RECENT_STORAGE_KEY = 'bolt_recent_opened';
 
 export type RecentOpenedMap = Record<string, string>;
 
-/** The minimal storage surface, so the logic can be tested without a browser. */
-export interface StorageLike {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-}
+export type { StorageLike };
 
-function defaultStorage(): StorageLike | undefined {
-  try {
-    return typeof localStorage === 'undefined' ? undefined : localStorage;
-  } catch {
-    return undefined;
-  }
-}
-
-export function readRecentOpened(storage: StorageLike | undefined = defaultStorage()): RecentOpenedMap {
+export function readRecentOpened(storage: StorageLike | undefined = getLocalStorage()): RecentOpenedMap {
   if (!storage) {
     return {};
   }
@@ -61,7 +51,7 @@ export function readRecentOpened(storage: StorageLike | undefined = defaultStora
  */
 export function recordChatOpened(
   id: string,
-  storage: StorageLike | undefined = defaultStorage(),
+  storage: StorageLike | undefined = getLocalStorage(),
   now = new Date(),
 ): void {
   if (!storage || !id) {

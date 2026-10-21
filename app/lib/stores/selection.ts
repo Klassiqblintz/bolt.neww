@@ -2,6 +2,7 @@ import { isValidModelId, type ProviderId } from '~/lib/models';
 import { chatOptionsStore } from '~/lib/stores/buildMode';
 import { modelsStore } from '~/lib/stores/models';
 import { providersStore } from '~/lib/stores/providers';
+import { getLocalStorage, type StorageLike } from '~/lib/storage';
 
 /**
  * Persistence of the model selection, scoped to the provider it belongs to.
@@ -22,27 +23,14 @@ export interface PersistedModelSelection {
   modelId: string;
 }
 
-/** The minimal storage surface, so the logic can be tested without a browser. */
-export interface StorageLike {
-  getItem(key: string): string | null;
-  setItem(key: string, value: string): void;
-  removeItem(key: string): void;
-}
-
-function defaultStorage(): StorageLike | undefined {
-  try {
-    return typeof localStorage === 'undefined' ? undefined : localStorage;
-  } catch {
-    return undefined;
-  }
-}
+export type { StorageLike };
 
 /**
  * Reads the persisted selection. Corrupted or foreign data is ignored instead
  * of throwing, a broken entry must never break the composer.
  */
 export function readPersistedSelection(
-  storage: StorageLike | undefined = defaultStorage(),
+  storage: StorageLike | undefined = getLocalStorage(),
 ): PersistedModelSelection | undefined {
   if (!storage) {
     return undefined;
@@ -76,7 +64,7 @@ export function readPersistedSelection(
 
 export function writePersistedSelection(
   selection: PersistedModelSelection | undefined,
-  storage: StorageLike | undefined = defaultStorage(),
+  storage: StorageLike | undefined = getLocalStorage(),
 ): void {
   if (!storage) {
     return;
@@ -232,6 +220,31 @@ function considerRestore(): void {
   if (result.unavailableModelId) {
     modelsStore.setKey('unavailableModelId', result.unavailableModelId);
   }
+}
+
+/**
+ * Re-checks the selected model against a freshly loaded catalogue.
+ *
+ * Replacing the catalogue clears the warning along with the rest of the store,
+ * so the check has to run again afterwards. A model that the configured
+ * provider no longer offers is reported to the user instead of being left to
+ * fail silently on the next request.
+ */
+export function revalidateSelectedModel(): void {
+  const modelId = chatOptionsStore.get().modelId;
+
+  if (!modelId) {
+    modelsStore.setKey('unavailableModelId', undefined);
+
+    return;
+  }
+
+  const { provider, loaded } = modelsStore.get();
+
+  modelsStore.setKey(
+    'unavailableModelId',
+    loaded && provider !== undefined && !isValidModelId(provider, modelId) ? modelId : undefined,
+  );
 }
 
 function checkReady(): void {
