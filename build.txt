@@ -1,0 +1,343 @@
+we need to correct the existing bolt.new-based application. the previous implementation did not satisfy the requested design and functionality.
+
+this is a correction task, not a new redesign. inspect the current codebase and fix the existing implementation directly.
+
+IMPORTANT RULES:
+- preserve the working ai provider integrations and coding engine.
+- preserve the existing homepage gradient, typography, and light/dark theme.
+- do not rebuild the application from scratch.
+- do not add unrelated features.
+- do not replace real functionality with mock data.
+- do not claim a fix works unless it has been verified.
+- complete all five tasks below before reporting the work as finished.
+
+==================================================
+TASK 1: CORRECT THE FOUR BUILD-MODE SELECTORS
+==================================================
+
+the current implementation uses large rectangular cards with text inside them. this is not the required design.
+
+replace the current layout with a compact, icon-first build-mode selector.
+
+required modes:
+
+1. website
+2. slides
+3. app
+4. prototype
+
+EXACT LAYOUT REQUIREMENTS:
+
+- arrange the four options horizontally on desktop and mobile whenever space permits.
+- each option must consist of a rounded-square icon tile with its text label directly underneath.
+- the icon must be centered inside the square tile.
+- the label must sit outside the tile, underneath it.
+- do not put the label inside the square tile.
+- do not use large rectangular cards.
+- do not use full-width pill buttons.
+- keep all four options visually balanced and evenly spaced.
+- use consistent tile dimensions, border radius, internal padding, and label spacing.
+- ensure the selector fits a narrow mobile viewport without horizontal scrolling.
+
+ICON REQUIREMENTS:
+
+- website: use a recognizable globe icon.
+- slides: use a presentation/chart icon.
+- app: use a device or mobile-application icon.
+- prototype: use a laboratory flask icon.
+
+use the icon library already installed in the project. select the closest appropriate existing icons rather than drawing substitute symbols or introducing an unnecessary dependency.
+
+VISUAL STYLE:
+
+- dark theme: use dark blue rounded-square tiles with clearly visible light icons.
+- light theme: use matching light surfaces and appropriate contrast.
+- inactive modes should remain clearly visible rather than appearing disabled.
+- the active mode should have a subtle blue border, background accent, or glow.
+- labels must be readable and centered.
+- maintain a polished, consistent appearance.
+
+BEHAVIOR:
+
+- tapping a tile must change the selected mode.
+- the selected mode must remain selected while the user types a prompt.
+- switching modes must update the appropriate placeholder and generation instructions.
+- the selected mode must be included in the generation workflow where applicable.
+- preserve the existing website, slides, app, and prototype behavior.
+- do not claim that a mode has a specialized generation engine unless one actually exists.
+
+remove the current large-card layout completely from this component.
+
+==================================================
+TASK 2: CORRECT THE SIDEBAR NAVIGATION
+==================================================
+
+the previous implementation incorrectly placed recent and starred filters under "your chats" instead of providing the requested main navigation entries.
+
+implement the following sidebar structure:
+
+PRIMARY NAVIGATION:
+
+1. home
+2. projects
+3. starred
+4. recently viewed
+5. live chat
+
+PROVIDER MANAGEMENT:
+
+6. ai providers
+
+SECONDARY NAVIGATION:
+
+7. help center
+8. release notes
+9. status
+
+VISUAL REQUIREMENTS:
+
+- use the existing icon library.
+- use a house icon for home.
+- use an appropriate folder or grid icon for projects.
+- use a star icon for starred.
+- use a clock/history icon for recently viewed.
+- use a chat or broadcast icon for live chat.
+- use a plug icon for ai providers.
+- use suitable help, release-notes, and status icons.
+- keep icon sizes, text alignment, row height, spacing, and padding consistent.
+- highlight the active navigation destination.
+- retain the existing dark/light theme support.
+- ensure the sidebar works correctly on mobile and desktop.
+
+FUNCTIONAL REQUIREMENTS:
+
+HOME:
+navigate to the main build homepage.
+
+PROJECTS:
+display real saved projects and available conversations.
+allow users to open an existing project.
+show an honest empty state if there are no projects.
+
+STARRED:
+provide a dedicated navigation destination for starred conversations or projects.
+allow the user to star and unstar items.
+persist the starred state using the appropriate existing storage mechanism.
+
+RECENTLY VIEWED:
+provide a dedicated navigation destination for recently opened conversations or projects.
+use real stored data and update the history when an item is opened.
+
+LIVE CHAT:
+open the existing coding chat or start a new coding conversation using the current chat workflow.
+do not create a fake support chat or a duplicate generation engine.
+
+AI PROVIDERS:
+open the existing provider-management interface.
+
+HELP CENTER:
+use the existing help route if available.
+if no help route exists, create a simple functional page explaining how to configure providers, select models, and use the coding workspace.
+
+RELEASE NOTES:
+use existing release-note content if available.
+otherwise display a clear, minimal page indicating that release notes are not yet available.
+
+STATUS:
+show real application and provider readiness information where available.
+do not invent uptime or successful provider checks.
+
+IMPORTANT:
+do not place the primary navigation destinations only inside a "your chats" subsection or represent starred and recent as filters that replace the requested navigation entries.
+
+reuse the existing route and conversation persistence mechanisms. do not invent projects or claim that ephemeral files are permanently stored.
+
+verify that each navigation item opens the correct destination and that browser back navigation works appropriately.
+
+==================================================
+TASK 3: PERSIST THE SELECTED PROVIDER AND MODEL
+==================================================
+
+the selected model disappears after refreshing the page, forcing the user to select it again.
+
+fix this properly.
+
+requirements:
+
+1. inspect the provider selector, model selector, settings state, local storage, session storage, account persistence, and application initialization.
+
+2. identify why the provider/model selection is lost during page reload.
+
+3. persist the user's selected provider and model using an appropriate mechanism.
+
+4. restore the saved selection during application initialization before allowing prompt submission.
+
+5. persist the selected model identifier and its associated provider identifier together so that a model cannot accidentally be assigned to the wrong provider.
+
+6. persist the user's selected build mode if appropriate, without interfering with provider settings.
+
+7. when a saved provider or model is unavailable, show a clear message and allow the user to choose another model.
+
+8. do not silently replace a saved selection with an unrelated model.
+
+9. ensure switching providers updates the model list without incorrectly retaining a model from the previous provider.
+
+10. prevent unnecessary state resets when the page re-renders or the user changes themes.
+
+11. if the application has authenticated user accounts, prefer appropriately scoped persistent user settings. if it has no authentication, use a clearly scoped browser-persistence mechanism and document its limitations.
+
+12. do not store raw api keys in ordinary browser storage as part of this task.
+
+13. ensure initialization and model-catalogue loading cannot overwrite a valid saved selection with an empty or temporary default.
+
+add tests covering:
+- saving a provider/model selection;
+- restoring it after initialization;
+- maintaining the selection after a simulated reload;
+- switching providers;
+- handling unavailable models;
+- preventing cross-provider model mismatches.
+
+==================================================
+TASK 4: FIX "THE REQUEST FAILED. PLEASE TRY AGAIN LATER" AND THE GENERATION FAILURE
+==================================================
+
+the application still reports:
+
+"the request failed. Please try again later."
+
+the user has already selected a provider and a model, so this is a real workflow defect.
+
+do not simply suppress the error or hide its notification.
+
+trace the complete flow:
+
+model catalogue
+-> provider/model selector
+-> selected-state management
+-> prompt composer
+-> chat request payload
+-> server request validation
+-> provider adapter
+-> model construction
+-> streaming generation
+-> artifact/action parsing
+-> file creation and preview.
+
+inspect the exact request and state fields at every step.
+
+identify whether the root cause involves:
+- mismatched provider identifiers;
+- inconsistent model field names;
+- stale component state;
+- model catalogue loading;
+- asynchronous initialization;
+- custom-provider validation;
+- request serialization;
+- server-side allow-list validation;
+- or another actual defect.
+
+fix the root cause.
+
+requirements:
+
+1. the selected provider and model must reach the server correctly.
+2. the server must resolve the requested model using the correct provider.
+3. custom-provider models must be validated using their configured provider rules rather than incorrectly rejected by a built-in catalogue.
+4. preserve the existing anthropic and openrouter integrations.
+5. preserve streaming responses and the existing artifact/action format.
+6. preserve prompt enhancement and ensure it uses the correct selected model.
+7. display the actual useful provider error if generation fails.
+8. do not silently switch to a different model.
+9. do not simulate a successful response.
+10. keep api keys server-side and redact them from all logs and errors.
+
+add regression tests proving that an explicitly selected model reaches the actual provider request.
+
+test both a built-in provider and a custom compatible provider where the current implementation supports them.
+
+verify the request payload and model construction, not just the appearance of the selector.
+
+==================================================
+TASK 5: MAKE THE CHAT EXPERIENCE PROFESSIONAL
+==================================================
+
+the current chat interface displays oversized message cards, repeated generic user avatars, redundant prompt content, and a cluttered error area.
+
+improve the chat presentation while preserving the existing generation pipeline.
+
+REQUIREMENTS:
+
+1. display user prompts as clean, compact message bubbles or aligned message blocks.
+
+2. display assistant responses in a readable conversational layout with consistent spacing and typography.
+
+3. avoid oversized cards around every message unless a specific artifact, plan, or result genuinely needs a card.
+
+4. remove repeated generic user avatars where they do not improve the experience.
+
+5. never duplicate a user's prompt inside an assistant message.
+
+6. never insert predefined example text, greetings, or previously entered prompts into a new conversation unless the user explicitly requested them or they are actual persisted conversation content.
+
+7. do not inject arbitrary text such as "hello" into messages or request payloads.
+
+8. display plans as compact, structured content only when the user enables planning mode or the existing workflow legitimately generates a plan.
+
+9. keep code artifacts, file changes, build results, and relevant action status visible and understandable.
+
+10. provide a clear loading or generation state while the model is responding.
+
+11. make errors visible in one primary location without duplicated warning panels and toasts.
+
+12. keep the composer fixed or appropriately positioned near the bottom of the chat workspace on mobile without covering messages or navigation controls.
+
+13. ensure long responses, code blocks, and tool output remain readable on mobile and desktop.
+
+14. preserve the existing code editor, file tree, terminal, live preview, streaming behavior, and artifact/action parser.
+
+15. preserve light/dark theme compatibility.
+
+the target experience should feel like a polished modern ai coding workspace: concise user messages, readable assistant responses, a clean composer, and structured code/build results.
+
+do not replace the chat system with a static visual mockup.
+
+==================================================
+FINAL VERIFICATION
+==================================================
+
+before making changes, inspect the relevant components and identify the root causes.
+
+implement the fixes incrementally.
+
+after the changes, run:
+- unit tests;
+- provider/model selection tests;
+- persistence tests;
+- generation request-contract tests;
+- sidebar navigation tests;
+- build-mode interaction tests;
+- chat rendering tests where available;
+- type checks;
+- lint checks;
+- production build.
+
+inspect the final implementation for:
+- incorrect model identifiers;
+- duplicate or injected chat messages;
+- broken routes;
+- nonfunctional navigation entries;
+- inaccessible dropdown content;
+- mobile overflow;
+- duplicate error displays;
+- exposed api credentials.
+
+report:
+1. the actual root cause of each defect;
+2. the files modified;
+3. the tests added and results;
+4. what was verified versus what remains unverified;
+5. the exact deployment steps.
+
+do not deploy automatically.
+do not claim successful live code generation unless a valid configured provider has actually generated code through the existing artifact pipeline.

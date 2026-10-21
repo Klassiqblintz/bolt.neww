@@ -1,0 +1,15 @@
+# Normalize line endings in the repository so a Windows checkout produces the
+# same files as a Linux or macOS one. Without this the linter and the build
+# disagree about the content of every file.
+* text=auto eol=lf
+
+# Files that must stay byte for byte identical.
+*.jpg binary
+*.jpeg binary
+*.png binary
+*.gif binary
+*.ico binary
+*.woff binary
+*.woff2 binary
+*.pdf binary
+*.zip binary

@@ -235,6 +235,25 @@ export default defineConfig({
       },
     },
   },
+  content: {
+    pipeline: {
+      /**
+       * UnoCSS' Vite plugin only scans `.vue`, `.svelte`, `.jsx`, `.tsx`, `.md`,
+       * `.mdx`, `.astro`, `.elm`, `.php`, `.phtml` and `.html` by default.
+       *
+       * Plain `.ts` and `.js` modules are therefore never inspected, so a
+       * class name that only occurs in a TypeScript module (an icon name in a
+       * store, for example) never receives a CSS rule and silently renders as
+       * nothing at all. The build-mode selector lost all four of its icons
+       * this way.
+       *
+       * Extending the pattern keeps every class name in the project reachable,
+       * no matter which module it is declared in.
+       */
+      include: [/\.(vue|svelte|[jt]sx?|ts|mdx?|astro|elm|php|phtml|html)($|\?)/],
+      exclude: [/\/node_modules\//, /\.(css|scss|sass|less|styl)($|\?)/],
+    },
+  },
   transformers: [transformerDirectives()],
   presets: [
     presetUno({

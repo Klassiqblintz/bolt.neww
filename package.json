@@ -13,6 +13,7 @@
     "dev:local": "node --env-file=.env node_modules/@remix-run/dev/dist/cli.js vite:dev",
     "test": "vitest --run",
     "test:watch": "vitest",
+    "check:css": "node scripts/check-generated-css.mjs",
     "lint": "eslint --cache --cache-location ./node_modules/.cache/eslint .",
     "lint:fix": "npm run lint -- --fix",
     "start": "bindings=$(./bindings.sh) && wrangler pages dev ./build/client $bindings",
