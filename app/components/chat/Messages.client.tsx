@@ -41,9 +41,15 @@ export const Messages = React.forwardRef<HTMLDivElement, MessagesProps>((props: 
           );
         }
 
+        /**
+         * The very last assistant message is the one being streamed, so it
+         * gets the caret. Every earlier answer is finished content.
+         */
+        const isStreamingMessage = isStreaming && index === messages.length - 1;
+
         return (
           <div key={index} className={classNames('w-full overflow-hidden', { 'mt-6': index > 0 })}>
-            <AssistantMessage content={content} />
+            <AssistantMessage content={content} isStreaming={isStreamingMessage} />
           </div>
         );
       })}
