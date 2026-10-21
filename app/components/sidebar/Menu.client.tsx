@@ -250,6 +250,7 @@ export function Menu() {
                     <HistoryItem
                       key={item.id}
                       item={item}
+                      onNavigate={closeSidebar}
                       onDelete={() => setDialogContent({ type: 'delete', item })}
                     />
                   ))}

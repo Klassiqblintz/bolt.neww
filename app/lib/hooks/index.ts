@@ -5,3 +5,4 @@ export * from './useSnapScroll';
 export * from './useIsMobile';
 export * from './useProviderStatus';
 export * from './useModels';
+export * from './useAppShell';

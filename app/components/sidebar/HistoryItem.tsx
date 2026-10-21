@@ -8,9 +8,12 @@ import { classNames } from '~/utils/classNames';
 interface HistoryItemProps {
   item: ChatHistoryItem;
   onDelete?: (event: React.UIEvent) => void;
+
+  /** Called when the entry navigates, so the sidebar can close behind it. */
+  onNavigate?: () => void;
 }
 
-export function HistoryItem({ item, onDelete }: HistoryItemProps) {
+export function HistoryItem({ item, onDelete, onNavigate }: HistoryItemProps) {
   const [hovering, setHovering] = useState(false);
   const hoverRef = useRef<HTMLDivElement>(null);
   const starred = useStore(starredChats);
@@ -44,7 +47,7 @@ export function HistoryItem({ item, onDelete }: HistoryItemProps) {
       ref={hoverRef}
       className="group rounded-md text-bolt-elements-textSecondary hover:text-bolt-elements-textPrimary hover:bg-bolt-elements-background-depth-3 overflow-hidden flex justify-between items-center px-2 py-1"
     >
-      <a href={`/chat/${item.urlId}`} className="flex w-full relative truncate block">
+      <a href={`/chat/${item.urlId}`} className="flex w-full relative truncate block" onClick={onNavigate}>
         {item.description}
         <div className="absolute right-0 z-1 top-0 bottom-0 bg-gradient-to-l from-bolt-elements-background-depth-2 group-hover:from-bolt-elements-background-depth-3 to-transparent w-10 flex justify-end group-hover:w-20 group-hover:from-45%">
           {hovering && (

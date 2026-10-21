@@ -3,6 +3,7 @@ import { useState, useEffect } from 'react';
 import { atom } from 'nanostores';
 import type { Message } from 'ai';
 import { toast } from 'react-toastify';
+import { withPersistenceErrorFlag } from '~/lib/app-shell';
 import { workbenchStore } from '~/lib/stores/workbench';
 import { recordChatOpened } from '~/lib/stores/recentlyViewed';
 import { getMessages, getNextId, getUrlId, openDatabase, setMessages } from './db';
@@ -98,9 +99,30 @@ export function useChatHistory() {
         }
       }
 
-      await setMessages(db, chatId.get() as string, messages, urlId, description.get());
+      try {
+        await setMessages(db, chatId.get() as string, messages, urlId, description.get());
+      } catch (error) {
+        /**
+         * The save failed after the request already reached this point, so the
+         * failure cannot be thrown back to the caller without losing the
+         * streamed answer. The chat URL carries a flag instead, so the notice
+         * survives the reload that follows and is shown once.
+         */
+        markPersistenceFailed();
+
+        throw error;
+      }
     },
   };
+}
+
+/** Marks the current chat URL as one whose history could not be saved. */
+function markPersistenceFailed() {
+  if (typeof window === 'undefined') {
+    return;
+  }
+
+  window.history.replaceState({}, '', withPersistenceErrorFlag(window.location.href));
 }
 
 function navigateChat(nextId: string) {
