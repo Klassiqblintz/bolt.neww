@@ -11,6 +11,17 @@ export default defineConfig((config) => {
     build: {
       target: 'esnext',
     },
+    test: {
+      /**
+       * The route and store tests run in the plain Node environment, which is
+       * the one the Remix plugin compiles the server modules for. A component
+       * test opts into a DOM with a `@vitest-environment jsdom` comment at the
+       * top of the file, so only the tests that render pay for the DOM.
+       */
+      environment: 'node',
+      setupFiles: ['./app/test/setup.ts'],
+      include: ['app/**/*.{spec,test}.{ts,tsx}'],
+    },
     plugins: [
       nodePolyfills({
         include: ['path', 'buffer'],
@@ -23,13 +34,22 @@ export default defineConfig((config) => {
        * app instead. The AI chat API is the only feature that needs the runtime.
        */
       !process.env.DISABLE_CF_PROXY && config.mode !== 'test' && remixCloudflareDevProxy(),
-      remixVitePlugin({
-        future: {
-          v3_fetcherPersist: true,
-          v3_relativeSplatPath: true,
-          v3_throwAbortReason: true,
-        },
-      }),
+
+      /**
+       * The Remix plugin rewrites every module to expect a browser bootstrap
+       * preamble and strips the server exports, which makes the route tests
+       * and the component tests unloadable. The test run therefore compiles
+       * the same source with plain esbuild through Vite, and the modules are
+       * imported directly.
+       */
+      config.mode !== 'test' &&
+        remixVitePlugin({
+          future: {
+            v3_fetcherPersist: true,
+            v3_relativeSplatPath: true,
+            v3_throwAbortReason: true,
+          },
+        }),
       UnoCSS(),
       tsconfigPaths(),
       chrome129IssuePlugin(),

@@ -13,6 +13,7 @@ import { cubicEasingFn } from '~/utils/easings';
 import { logger } from '~/utils/logger';
 import { HistoryItem } from './HistoryItem';
 import { binDates } from './date-binning';
+import { getLiveChatHref, PRIMARY_NAV, PROVIDER_NAV, SECONDARY_NAV, type NavItem } from './navigation';
 
 const menuVariants = {
   closed: {
@@ -36,48 +37,6 @@ const menuVariants = {
 } satisfies Variants;
 
 type DialogContent = { type: 'delete'; item: ChatHistoryItem } | null;
-
-interface NavItem {
-  label: string;
-  icon: string;
-  href: string;
-
-  /** Whether the destination counts as active for this pathname. */
-  matches?: (pathname: string) => boolean;
-}
-
-/**
- * The main navigation of the sidebar. Every entry is a real destination that
- * reuses an existing route or one of the new pages, none of them is a filter
- * or a placeholder.
- */
-const PRIMARY_NAV: NavItem[] = [
-  { label: 'Home', icon: 'i-ph:house', href: '/', matches: (path) => path === '/' },
-  { label: 'Projects', icon: 'i-ph:folder-notch', href: '/projects', matches: (path) => path === '/projects' },
-  { label: 'Starred', icon: 'i-ph:star', href: '/starred', matches: (path) => path === '/starred' },
-  {
-    label: 'Recently viewed',
-    icon: 'i-ph:clock-counter-clockwise',
-    href: '/recently-viewed',
-    matches: (path) => path === '/recently-viewed',
-  },
-  { label: 'Live chat', icon: 'i-ph:broadcast', href: '/', matches: (path) => path.startsWith('/chat/') },
-];
-
-const PROVIDER_NAV: NavItem[] = [
-  { label: 'AI providers', icon: 'i-ph:plugs', href: '/providers', matches: (path) => path === '/providers' },
-];
-
-const SECONDARY_NAV: NavItem[] = [
-  { label: 'Help center', icon: 'i-ph:question', href: '/help', matches: (path) => path === '/help' },
-  {
-    label: 'Release notes',
-    icon: 'i-ph:lightning',
-    href: '/release-notes',
-    matches: (path) => path === '/release-notes',
-  },
-  { label: 'Status', icon: 'i-ph:path', href: '/status', matches: (path) => path === '/status' },
-];
 
 /**
  * Chat history sidebar.
@@ -159,7 +118,7 @@ export function Menu() {
     };
   }, [open]);
 
-  const liveChatHref = currentChatId ? `/chat/${currentChatId}` : '/';
+  const liveChatHref = getLiveChatHref(currentChatId);
 
   const renderNavItem = (item: NavItem) => {
     const href = item.label === 'Live chat' ? liveChatHref : item.href;
