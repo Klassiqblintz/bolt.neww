@@ -5,6 +5,7 @@ import { useAnimate } from 'framer-motion';
 import { memo, useEffect, useMemo, useRef, useState } from 'react';
 import { cssTransition, toast, ToastContainer } from 'react-toastify';
 import { useMessageParser, useModels, usePromptEnhancer, useShortcuts, useSnapScroll } from '~/lib/hooks';
+import { buildChatRequestBody } from '~/lib/chat-request';
 import { parseError } from '~/lib/errors';
 import { useChatHistory } from '~/lib/persistence';
 import { getProviderHeaders, getProviderSpec, loadProviders } from '~/lib/providers/client';
@@ -117,18 +118,19 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
   }, []);
 
   const requestBody = useMemo(
-    () => ({
-      modelId,
-      provider: getProviderSpec(activeProvider),
+    () =>
+      buildChatRequestBody({
+        modelId,
+        provider: getProviderSpec(activeProvider),
 
-      /**
-       * The build mode and the planning mode are sent with every request. The
-       * server turns them into system instructions, so they steer the
-       * generation without ending up in the user's message.
-       */
-      buildMode,
-      planningMode,
-    }),
+        /**
+         * The build mode and the planning mode are sent with every request.
+         * The server turns them into system instructions, so they steer the
+         * generation without ending up in the user's message.
+         */
+        buildMode,
+        planningMode,
+      }),
     [modelId, activeProvider, buildMode, planningMode],
   );
 

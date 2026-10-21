@@ -4,12 +4,13 @@ import { ModelUnavailableError, toAppError } from '~/lib/.server/llm/errors';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/.server/llm/prompts';
 import { getProviderId } from '~/lib/.server/llm/provider';
+import { parseProviderSpec } from '~/lib/.server/llm/provider-spec';
 import { redactValue } from '~/lib/.server/llm/redact';
 import { streamText, type Messages, type StreamingOptions } from '~/lib/.server/llm/stream-text';
 import { InvalidProviderError, resolveProvider } from '~/lib/.server/llm/user-provider';
 import SwitchableStream from '~/lib/.server/llm/switchable-stream';
 import { ERROR_CODES, formatError } from '~/lib/errors';
-import { isProviderType, PROVIDER_KEY_HEADER, type ProviderRequestSpec } from '~/lib/providers/types';
+import { PROVIDER_KEY_HEADER, type ProviderRequestSpec } from '~/lib/providers/types';
 
 export async function action(args: ActionFunctionArgs) {
   return chatAction(args);
@@ -56,7 +57,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
      * never stored and never written to a log.
      */
     const userApiKey = request.headers.get(PROVIDER_KEY_HEADER) ?? undefined;
-    const spec = normalizeProviderSpec(provider);
+    const spec = parseProviderSpec(provider);
 
     userManaged = Boolean(spec);
 
@@ -98,7 +99,7 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         const result = await streamText(
           messages,
           cloudflareEnv,
-          { model: resolved.model, system: systemContext },
+          { model: resolved.model, modelId: resolved.modelId, providerId: resolved.provider, system: systemContext },
           options,
         );
 
@@ -106,7 +107,12 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       },
     };
 
-    const result = await streamText(messages, cloudflareEnv, { model: resolved.model, system: systemContext }, options);
+    const result = await streamText(
+      messages,
+      cloudflareEnv,
+      { model: resolved.model, modelId: resolved.modelId, providerId: resolved.provider, system: systemContext },
+      options,
+    );
 
     stream.switchSource(result.toAIStream());
 
@@ -142,25 +148,4 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       },
     });
   }
-}
-
-/**
- * Makes sure the provider specification from the client is well formed.
- */
-function normalizeProviderSpec(provider: unknown): ProviderRequestSpec | undefined {
-  if (!provider || typeof provider !== 'object') {
-    return undefined;
-  }
-
-  const spec = provider as Partial<ProviderRequestSpec>;
-
-  if (!isProviderType(spec.type)) {
-    return undefined;
-  }
-
-  return {
-    type: spec.type,
-    baseUrl: typeof spec.baseUrl === 'string' ? spec.baseUrl : undefined,
-    modelId: typeof spec.modelId === 'string' ? spec.modelId : undefined,
-  };
 }

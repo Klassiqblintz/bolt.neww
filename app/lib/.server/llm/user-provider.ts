@@ -1,7 +1,7 @@
 import type { LanguageModelV1 } from '@ai-sdk/provider';
 import { isProviderType, type ProviderRequestSpec, type ProviderType } from '~/lib/providers/types';
 import { createUserModel, getDefaultBaseUrl } from '~/lib/.server/llm/adapters';
-import { getLanguageModel } from '~/lib/.server/llm/model';
+import { getLanguageModel, getProviderConfig, resolveConfiguredModelId } from '~/lib/.server/llm/model';
 import { getProviderId } from '~/lib/.server/llm/provider';
 import { checkProviderUrl, normalizeBaseUrl } from '~/lib/.server/llm/url-policy';
 
@@ -76,11 +76,19 @@ export function resolveProvider({
 }: ResolveProviderInput): ResolvedProvider {
   if (!spec) {
     const provider = getProviderId(env);
+    const config = getProviderConfig(env);
+
+    /**
+     * The model the request actually uses, including the provider default
+     * when the client did not name one. The caller needs the effective id to
+     * pick the right request headers and output budget for the model.
+     */
+    const modelId = resolveConfiguredModelId(config, serverModelId);
 
     return {
       model: getLanguageModel(env, serverModelId),
       provider,
-      modelId: serverModelId ?? '',
+      modelId,
       source: 'server',
     };
   }

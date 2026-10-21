@@ -64,30 +64,25 @@ export function getProviderConfig(cloudflareEnv: Env): ProviderConfig {
 }
 
 /**
- * Creates the language model of the configured provider.
+ * Resolves the model of the configured provider that the request will use.
  *
- * The optional `modelId` comes from the client and is validated against the
- * catalogue of the *configured* provider, so a model of another provider can
- * never be requested. An unknown model is reported instead of being silently
- * replaced by the provider default, because a surprise model switch produces
+ * When the client does not name a model, the default of the provider is used.
+ * A model that is not part of the catalogue is reported instead of being
+ * silently replaced by the default, because a surprise model switch produces
  * code the user never asked for.
  */
-export function getLanguageModel(cloudflareEnv: Env, modelId?: string): LanguageModelV1 {
-  const config = getProviderConfig(cloudflareEnv);
-
-  if (config.id === 'openrouter') {
-    return createOpenRouterModel(cloudflareEnv, config, modelId);
+export function resolveConfiguredModelId(config: ProviderConfig, modelId?: string): string {
+  /**
+   * A provider without a usable model list cannot serve a request. Reporting
+   * it here keeps an empty or misconfigured catalogue from silently producing
+   * an empty model id, which the provider would reject with a confusing error.
+   */
+  if (config.models.length === 0) {
+    throw new ModelUnavailableError(
+      `The ${config.id} provider has no usable model. Check the AI_MODELS setting on the server or pick another provider.`,
+    );
   }
 
-  return createAnthropicModel(cloudflareEnv, config, modelId);
-}
-
-/**
- * Resolves the requested model against the catalogue of the provider,
- * including the `AI_MODELS` allow list. A model the client may not use is
- * reported instead of being sent.
- */
-function resolveModelId(config: ProviderConfig, modelId?: string): string {
   if (modelId === undefined || modelId === '') {
     return config.defaultModelId;
   }
@@ -101,17 +96,33 @@ function resolveModelId(config: ProviderConfig, modelId?: string): string {
   return modelId;
 }
 
-function createAnthropicModel(cloudflareEnv: Env, config: ProviderConfig, modelId?: string): LanguageModelV1 {
+/**
+ * Creates the language model of the configured provider.
+ *
+ * The optional `modelId` comes from the client and is validated against the
+ * catalogue of the *configured* provider, so a model of another provider can
+ * never be requested.
+ */
+export function getLanguageModel(cloudflareEnv: Env, modelId?: string): LanguageModelV1 {
+  const config = getProviderConfig(cloudflareEnv);
+  const model = resolveConfiguredModelId(config, modelId);
+
+  if (config.id === 'openrouter') {
+    return createOpenRouterModel(cloudflareEnv, config, model);
+  }
+
+  return createAnthropicModel(cloudflareEnv, config, model);
+}
+
+function createAnthropicModel(cloudflareEnv: Env, config: ProviderConfig, modelId: string): LanguageModelV1 {
   const anthropic = createAnthropic({
     apiKey: config.apiKey,
   });
 
-  const model = resolveModelId(config, modelId);
-
-  return anthropic(model);
+  return anthropic(modelId);
 }
 
-function createOpenRouterModel(cloudflareEnv: Env, config: ProviderConfig, modelId?: string): LanguageModelV1 {
+function createOpenRouterModel(cloudflareEnv: Env, config: ProviderConfig, modelId: string): LanguageModelV1 {
   const headers: Record<string, string> = {};
 
   /**
@@ -140,7 +151,5 @@ function createOpenRouterModel(cloudflareEnv: Env, config: ProviderConfig, model
     compatibility: 'compatible',
   });
 
-  const model = resolveModelId(config, modelId);
-
-  return openrouter(model);
+  return openrouter(modelId);
 }

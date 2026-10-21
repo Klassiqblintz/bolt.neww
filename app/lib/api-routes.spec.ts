@@ -756,6 +756,93 @@ describe('POST /api/chat', () => {
     vi.unstubAllGlobals();
   });
 
+  it('sends the anthropic beta header the default model needs for its output budget', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-api03-test-key';
+
+    let requestedBody = '';
+    let requestedHeaders: Record<string, string> = {};
+
+    const fetchStub = vi.fn().mockImplementation(async (_url: unknown, init: { body?: string; headers?: unknown }) => {
+      requestedBody = init.body ?? '';
+      requestedHeaders = (init.headers ?? {}) as Record<string, string>;
+
+      return new Response(
+        'data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-3-5-sonnet-20240620","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}}\n\ndata: {"type":"message_stop"}\n\n',
+        { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+      );
+    });
+
+    vi.stubGlobal('fetch', fetchStub);
+
+    /**
+     * Without this beta header Claude 3.5 Sonnet (20240620) allows 4096
+     * output tokens. The request asks for 8192, so the provider would reject
+     * the whole request with a 400 before a single token is generated.
+     */
+    await chatAction({
+      context,
+      request: chatRequest({ messages: [{ role: 'user', content: 'hello' }] }),
+      params: {},
+    } as never);
+
+    expect(requestedHeaders['anthropic-beta']).toBe('max-tokens-3-5-sonnet-2024-07-15');
+    expect(requestedBody).toContain('"max_tokens":8192');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('never asks the provider for more output than the selected model allows', async () => {
+    process.env.ANTHROPIC_API_KEY = 'sk-ant-api03-test-key';
+
+    let requestedBody = '';
+
+    const fetchStub = vi.fn().mockImplementation(async (_url: unknown, init: { body?: string }) => {
+      requestedBody = init.body ?? '';
+
+      return new Response(
+        'data: {"type":"message_start","message":{"id":"msg_1","type":"message","role":"assistant","content":[],"model":"claude-3-opus-20240229","stop_reason":null,"stop_sequence":null,"usage":{"input_tokens":1,"output_tokens":1}}}\n\ndata: {"type":"message_stop"}\n\n',
+        { status: 200, headers: { 'Content-Type': 'text/event-stream' } },
+      );
+    });
+
+    vi.stubGlobal('fetch', fetchStub);
+
+    await chatAction({
+      context,
+      request: chatRequest({
+        messages: [{ role: 'user', content: 'hello' }],
+        modelId: 'claude-3-opus-20240229',
+      }),
+      params: {},
+    } as never);
+
+    expect(requestedBody).toContain('"max_tokens":4096');
+
+    vi.unstubAllGlobals();
+  });
+
+  it('rejects an unsupported provider instead of falling back to the server provider', async () => {
+    const response = await chatAction({
+      context,
+      request: new Request('https://example.com/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bolt-provider-key': 'sk-user-key-12345678' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'hello' }],
+          provider: { type: 'hologram', modelId: 'some-model' },
+        }),
+      }),
+      params: {},
+    } as never);
+
+    expect(response.status).toBe(400);
+
+    const { code, message } = parseError(await response.text());
+
+    expect(code).toBe(ERROR_CODES.INVALID_REQUEST);
+    expect(message).toContain('not supported');
+  });
+
   it('never leaks the provider key in the error body', async () => {
     process.env.ANTHROPIC_API_KEY = 'sk-ant-api03-should-never-appear';
 

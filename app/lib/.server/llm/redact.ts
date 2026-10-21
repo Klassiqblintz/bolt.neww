@@ -7,10 +7,32 @@
  */
 
 const SECRET_PATTERNS: RegExp[] = [
-  /sk-ant-[A-Za-z0-9_-]{8,}/g,
-  /sk-or-v1-[A-Za-z0-9_-]{8,}/g,
-  /sk-[A-Za-z0-9_-]{16,}/g,
-  /Bearer\s+[A-Za-z0-9._-]{8,}/gi,
+  /* Anthropic */
+  /\bsk-ant-[A-Za-z0-9_-]{8,}/g,
+
+  /* OpenRouter */
+  /\bsk-or-[A-Za-z0-9_-]{8,}/g,
+
+  /**
+   * OpenAI and most compatible endpoints. Kept broad on purpose: a key that is
+   * missed here is a leaked credential, while over redacting only costs the
+   * wording of a message. The word boundary keeps ordinary words such as
+   * `task-manager` from being cut apart.
+   */
+  /\bsk-[A-Za-z0-9_-]{8,}/g,
+
+  /* Groq */
+  /\bgsk_[A-Za-z0-9]{8,}/g,
+
+  /* Google */
+  /\bAIza[A-Za-z0-9_-]{10,}/g,
+
+  /* xAI */
+  /\bxai-[A-Za-z0-9_-]{8,}/g,
+
+  /* Hugging Face */
+  /\bhf_[A-Za-z0-9]{8,}/g,
+  /\bBearer\s+[A-Za-z0-9._-]{8,}/gi,
   /"?(?:api[_-]?key|authorization|x-api-key)"?\s*[:=]\s*"?[^\s",}]+/gi,
 ];
 
