@@ -9,7 +9,7 @@ import { parseError } from '~/lib/errors';
 import { useChatHistory } from '~/lib/persistence';
 import { getProviderHeaders, getProviderSpec, loadProviders } from '~/lib/providers/client';
 import { chatStore } from '~/lib/stores/chat';
-import { buildContextPrefix, buildModeStore, chatOptionsStore } from '~/lib/stores/buildMode';
+import { buildModeStore, chatOptionsStore } from '~/lib/stores/buildMode';
 import { providersStore } from '~/lib/stores/providers';
 import { whenSelectionReady } from '~/lib/stores/selection';
 import { workbenchStore } from '~/lib/stores/workbench';
@@ -97,13 +97,15 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
    * Subscribe to the model selection so the chat request body is updated when
    * the user picks a different model in the composer.
    */
-  const { modelId } = useStore(chatOptionsStore);
+  const { modelId, planningMode } = useStore(chatOptionsStore);
 
   /**
    * The provider the user configured. It is used for the request when one is
    * set, otherwise the server configured provider is the fallback.
    */
   const { providers, defaultProviderId } = useStore(providersStore);
+
+  const buildMode = useStore(buildModeStore);
 
   const activeProvider = useMemo(
     () => providers.find((provider) => provider.id === defaultProviderId) ?? providers[0],
@@ -118,8 +120,16 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
     () => ({
       modelId,
       provider: getProviderSpec(activeProvider),
+
+      /**
+       * The build mode and the planning mode are sent with every request. The
+       * server turns them into system instructions, so they steer the
+       * generation without ending up in the user's message.
+       */
+      buildMode,
+      planningMode,
     }),
-    [modelId, activeProvider],
+    [modelId, activeProvider, buildMode, planningMode],
   );
 
   const requestHeaders = useMemo(() => getProviderHeaders(activeProvider), [activeProvider]);
@@ -243,15 +253,13 @@ export const ChatImpl = memo(({ initialMessages, storeMessageHistory }: ChatProp
 
     runAnimation();
 
-    const { planningMode } = chatOptionsStore.get();
-
     /**
-     * On a fresh conversation, prepend the selected build mode and (optionally)
-     * the planning-mode instruction so they genuinely steer what gets built.
+     * The message is sent exactly as the user typed it. The build mode and the
+     * planning mode travel with the request and become system instructions on
+     * the server, so they steer the generation without ever showing up in the
+     * conversation itself.
      */
-    const contextPrefix = chatStarted ? '' : buildContextPrefix(buildModeStore.get(), planningMode);
-
-    const finalInput = contextPrefix ? `${contextPrefix}\n\n${_input}` : _input;
+    const finalInput = _input;
 
     if (fileModifications !== undefined) {
       const diff = fileModificationsToHTML(fileModifications);

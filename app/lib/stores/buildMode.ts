@@ -1,32 +1,23 @@
 import { atom, map } from 'nanostores';
+import {
+  BUILD_MODES,
+  buildGenerationContext,
+  DEFAULT_BUILD_MODE,
+  getBuildModeInstruction,
+  isBuildMode,
+  PLANNING_INSTRUCTION,
+  type BuildMode,
+} from '~/lib/buildModes';
 
-/**
- * Build modes shown on the homepage composer. The selected mode is injected
- * into the first user message so the model steers the generated artifact
- * towards that kind of deliverable.
- */
-export type BuildMode = 'website' | 'slides' | 'app' | 'prototype';
-
-export const BUILD_MODES: Array<{ id: BuildMode; label: string; icon: string }> = [
-  { id: 'website', label: 'Website', icon: 'i-ph:globe-hemisphere-west' },
-  { id: 'slides', label: 'Slides', icon: 'i-ph:presentation-chart' },
-  { id: 'app', label: 'App', icon: 'i-ph:device-mobile' },
-  { id: 'prototype', label: 'Prototype', icon: 'i-ph:flask' },
-];
-
-const BUILD_MODE_INSTRUCTIONS: Record<BuildMode, string> = {
-  website:
-    'The user wants to build a website. Focus on delivering a polished, responsive website with clean layout, typography and styling.',
-  slides:
-    'The user wants to build a slide deck. Deliver a presentation (e.g. reveal.js or an HTML slide viewer) with multiple slides, navigation and speaker-friendly content.',
-  app: 'The user wants to build a full application. Focus on a working app with multiple features and a coherent user flow.',
-  prototype:
-    'The user wants a quick interactive prototype. Prioritize demonstrating the core idea and interactions over production polish or completeness.',
+export {
+  BUILD_MODES,
+  buildGenerationContext,
+  DEFAULT_BUILD_MODE,
+  getBuildModeInstruction,
+  isBuildMode,
+  PLANNING_INSTRUCTION,
+  type BuildMode,
 };
-
-export function getBuildModeInstruction(mode: BuildMode): string {
-  return BUILD_MODE_INSTRUCTIONS[mode];
-}
 
 const BUILD_MODE_STORAGE_KEY = 'bolt_build_mode';
 
@@ -50,7 +41,7 @@ export function readPersistedBuildMode(storage?: StorageLike): BuildMode | undef
   try {
     const raw = target.getItem(BUILD_MODE_STORAGE_KEY);
 
-    return BUILD_MODES.some((mode) => mode.id === raw) ? (raw as BuildMode) : undefined;
+    return isBuildMode(raw) ? raw : undefined;
   } catch {
     return undefined;
   }
@@ -74,10 +65,29 @@ export function writePersistedBuildMode(mode: BuildMode, storage?: StorageLike):
 }
 
 /**
- * The build mode survives a reload, it is restored before the first message is
- * composed and it never interacts with the provider settings.
+ * The selected build mode.
+ *
+ * The store starts with a constant default on purpose. Reading the persisted
+ * value while the module is evaluated would make the first render of the
+ * server rendered markup differ from the first render in the browser, because
+ * the server has no access to `localStorage`. The persisted value is restored
+ * by `initBuildMode` once the client is running.
  */
-export const buildModeStore = atom<BuildMode>(readPersistedBuildMode() ?? 'app');
+export const buildModeStore = atom<BuildMode>(DEFAULT_BUILD_MODE);
+
+/**
+ * Restores the persisted build mode.
+ *
+ * This runs in the browser only, after the first render, so the server
+ * rendered markup and the hydrated markup agree.
+ */
+export function initBuildMode(): void {
+  const persisted = readPersistedBuildMode();
+
+  if (persisted) {
+    buildModeStore.set(persisted);
+  }
+}
 
 /**
  * Picks a build mode and persists the choice.
@@ -100,29 +110,10 @@ export interface ChatOptions {
 /**
  * Homepage composer options. `modelId` is sent with each chat request and
  * validated server-side against the catalogue of the configured provider;
- * `planningMode` prepends a plan-first instruction to outgoing messages so the
- * assistant outlines an approach before coding.
+ * `planningMode` asks the assistant to outline a plan before any code is
+ * written.
  */
 export const chatOptionsStore = map<ChatOptions>({
   modelId: undefined,
   planningMode: false,
 });
-
-export const PLANNING_INSTRUCTION =
-  'Before writing any code, first outline a concise step-by-step plan for this request. Then continue with the implementation.';
-
-/**
- * Builds the context that is prepended to the first message of a conversation.
- *
- * The selected build mode tells the model what kind of deliverable to create
- * and planning mode asks for a plan before any code is written.
- */
-export function buildContextPrefix(mode: BuildMode, planningMode: boolean): string {
-  const parts = [getBuildModeInstruction(mode)];
-
-  if (planningMode) {
-    parts.push(PLANNING_INSTRUCTION);
-  }
-
-  return parts.join('\n\n');
-}

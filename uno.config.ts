@@ -160,6 +160,16 @@ export default defineConfig({
             backgroundAccent: 'var(--bolt-elements-item-backgroundAccent)',
             backgroundDanger: 'var(--bolt-elements-item-backgroundDanger)',
           },
+          mode: {
+            tile: {
+              background: 'var(--bolt-elements-mode-tile-background)',
+              backgroundActive: 'var(--bolt-elements-mode-tile-backgroundActive)',
+              borderColor: 'var(--bolt-elements-mode-tile-borderColor)',
+              borderColorActive: 'var(--bolt-elements-mode-tile-borderColorActive)',
+              icon: 'var(--bolt-elements-mode-tile-icon)',
+              iconActive: 'var(--bolt-elements-mode-tile-iconActive)',
+            },
+          },
           actions: {
             background: 'var(--bolt-elements-actions-background)',
             code: {

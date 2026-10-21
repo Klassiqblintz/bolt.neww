@@ -37,6 +37,14 @@
   --bolt-elements-item-backgroundAccent: theme('colors.alpha.accent.10');
   --bolt-elements-item-backgroundDanger: theme('colors.alpha.red.10');
 
+  /* Build mode tiles */
+  --bolt-elements-mode-tile-background: theme('colors.accent.50');
+  --bolt-elements-mode-tile-backgroundActive: theme('colors.accent.100');
+  --bolt-elements-mode-tile-borderColor: theme('colors.accent.200');
+  --bolt-elements-mode-tile-borderColorActive: theme('colors.accent.700');
+  --bolt-elements-mode-tile-icon: theme('colors.accent.700');
+  --bolt-elements-mode-tile-iconActive: theme('colors.accent.900');
+
   --bolt-elements-loader-background: theme('colors.alpha.gray.10');
   --bolt-elements-loader-progress: theme('colors.accent.500');
 
@@ -158,6 +166,14 @@
   --bolt-elements-item-backgroundActive: theme('colors.alpha.white.10');
   --bolt-elements-item-backgroundAccent: theme('colors.alpha.accent.10');
   --bolt-elements-item-backgroundDanger: theme('colors.alpha.red.10');
+
+  /* Build mode tiles */
+  --bolt-elements-mode-tile-background: theme('colors.accent.900');
+  --bolt-elements-mode-tile-backgroundActive: theme('colors.accent.700');
+  --bolt-elements-mode-tile-borderColor: theme('colors.accent.800');
+  --bolt-elements-mode-tile-borderColorActive: theme('colors.accent.500');
+  --bolt-elements-mode-tile-icon: theme('colors.white');
+  --bolt-elements-mode-tile-iconActive: theme('colors.white');
 
   --bolt-elements-loader-background: theme('colors.alpha.gray.10');
   --bolt-elements-loader-progress: theme('colors.accent.500');

@@ -4,6 +4,7 @@ import { action as enhancerAction } from '~/routes/api.enhancer';
 import { loader as modelsLoader } from '~/routes/api.models';
 import { loader as statusLoader } from '~/routes/api.status';
 import { ERROR_CODES, parseError } from '~/lib/errors';
+import { DEFAULT_BUILD_MODE, getBuildModeInstruction, PLANNING_INSTRUCTION } from '~/lib/buildModes';
 import { StreamingMessageParser } from '~/lib/runtime/message-parser';
 
 /**
@@ -118,6 +119,86 @@ describe('user provider routing', () => {
     expect(requestedUrl).toContain('openrouter.ai');
     expect(requestedBody).toContain('openai/gpt-4o');
     expect(JSON.stringify(requestedHeaders)).toContain('sk-or-user-key');
+  });
+
+  it('turns the build mode into a system instruction and leaves the user message untouched', async () => {
+    let requestedBody = '';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (_url: string, init: { body?: string }) => {
+        requestedBody = init.body ?? '';
+
+        return new Response(OPENAI_STREAM, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }),
+    );
+
+    await chatAction({
+      context,
+      request: new Request('https://example.com/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bolt-provider-key': 'sk-or-user-key' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'build me a landing page' }],
+          provider: { type: 'openrouter', modelId: 'openai/gpt-4o' },
+          buildMode: 'website',
+          planningMode: true,
+        }),
+      }),
+      params: {},
+    } as never);
+
+    const body = JSON.parse(requestedBody) as { messages: { role: string; content: string }[] };
+
+    const systemMessage = body.messages.find((message) => message.role === 'system');
+    const userMessage = body.messages.find((message) => message.role === 'user');
+
+    expect(systemMessage?.content).toContain(getBuildModeInstruction('website'));
+    expect(systemMessage?.content).toContain(PLANNING_INSTRUCTION);
+
+    /**
+     * The instructions must not leak into the conversation.
+     */
+    expect(userMessage?.content).toBe('build me a landing page');
+  });
+
+  it('uses the default build mode when the client sends an unknown one', async () => {
+    let requestedBody = '';
+
+    vi.stubGlobal(
+      'fetch',
+      vi.fn().mockImplementation(async (_url: string, init: { body?: string }) => {
+        requestedBody = init.body ?? '';
+
+        return new Response(OPENAI_STREAM, {
+          status: 200,
+          headers: { 'Content-Type': 'text/event-stream' },
+        });
+      }),
+    );
+
+    await chatAction({
+      context,
+      request: new Request('https://example.com/api/chat', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json', 'x-bolt-provider-key': 'sk-or-user-key' },
+        body: JSON.stringify({
+          messages: [{ role: 'user', content: 'hello' }],
+          provider: { type: 'openrouter', modelId: 'openai/gpt-4o' },
+          buildMode: 'hologram',
+        }),
+      }),
+      params: {},
+    } as never);
+
+    const body = JSON.parse(requestedBody) as { messages: { role: string; content: string }[] };
+    const systemMessage = body.messages.find((message) => message.role === 'system');
+
+    expect(systemMessage?.content).toContain(getBuildModeInstruction(DEFAULT_BUILD_MODE));
+    expect(systemMessage?.content).not.toContain(PLANNING_INSTRUCTION);
   });
 
   it('uses a custom endpoint of the user provider', async () => {

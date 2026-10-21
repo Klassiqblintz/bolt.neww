@@ -166,6 +166,14 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       </button>
                     </div>
                   )}
+                  {/**
+                   * The build mode selector lives inside the composer, so it
+                   * stays available for the whole conversation. The mode can
+                   * still be changed after the first message was sent.
+                   */}
+                  <div className="border-b border-bolt-elements-borderColor px-3 pb-2 pt-3 sm:px-4 sm:pt-4">
+                    <BuildModeSelector />
+                  </div>
                   <textarea
                     ref={textareaRef}
                     className="w-full pl-4 sm:pl-5 pt-4 sm:pt-5 pr-16 pb-2 focus:outline-none resize-none text-md sm:text-lg text-bolt-elements-textPrimary placeholder-bolt-elements-textTertiary bg-transparent"
@@ -188,7 +196,7 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                       minHeight: TEXTAREA_MIN_HEIGHT,
                       maxHeight: TEXTAREA_MAX_HEIGHT,
                     }}
-                    placeholder={chatStarted ? 'How can Bolt help you today?' : getPlaceholderForMode(buildMode)}
+                    placeholder={getPlaceholderForMode(buildMode)}
                     translate="no"
                   />
                   <ClientOnly>
@@ -281,7 +289,6 @@ export const BaseChat = React.forwardRef<HTMLDivElement, BaseChatProps>(
                 id="examples"
                 className="relative w-full max-w-chat mx-auto mt-6 mb-10 px-4 sm:px-6 flex flex-col gap-8"
               >
-                <BuildModeSelector />
                 <RecentlyViewed />
               </div>
             )}

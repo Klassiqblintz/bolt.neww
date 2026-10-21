@@ -1,4 +1,4 @@
-import { describe, expect, it } from 'vitest';
+import { describe, expect, it, vi } from 'vitest';
 import {
   getDefaultModelId,
   getModelsForProvider,
@@ -10,9 +10,11 @@ import {
 } from '~/lib/models';
 import {
   BUILD_MODES,
-  buildContextPrefix,
+  buildGenerationContext,
   buildModeStore,
   getBuildModeInstruction,
+  initBuildMode,
+  isBuildMode,
   PLANNING_INSTRUCTION,
   readPersistedBuildMode,
   writePersistedBuildMode,
@@ -99,25 +101,99 @@ describe('build mode persistence', () => {
   });
 });
 
-describe('context prefix', () => {
+describe('generation context', () => {
   it('includes the build mode instruction', () => {
-    const prefix = buildContextPrefix('slides', false);
+    const context = buildGenerationContext('slides', false);
 
-    expect(prefix).toBe(getBuildModeInstruction('slides'));
-    expect(prefix).not.toContain(PLANNING_INSTRUCTION);
+    expect(context).toBe(getBuildModeInstruction('slides'));
+    expect(context).not.toContain(PLANNING_INSTRUCTION);
   });
 
   it('adds the planning instruction when planning mode is on', () => {
-    const prefix = buildContextPrefix('website', true);
+    const context = buildGenerationContext('website', true);
 
-    expect(prefix).toContain(getBuildModeInstruction('website'));
-    expect(prefix).toContain(PLANNING_INSTRUCTION);
+    expect(context).toContain(getBuildModeInstruction('website'));
+    expect(context).toContain(PLANNING_INSTRUCTION);
   });
 
   it('never leaks the planning instruction when planning mode is off', () => {
-    const prefix = buildContextPrefix('app', false);
+    const context = buildGenerationContext('app', false);
 
-    expect(prefix).not.toContain(PLANNING_INSTRUCTION);
+    expect(context).not.toContain(PLANNING_INSTRUCTION);
+  });
+});
+
+describe('build mode validation', () => {
+  it('accepts every offered mode', () => {
+    for (const mode of BUILD_MODES) {
+      expect(isBuildMode(mode.id)).toBe(true);
+    }
+  });
+
+  it('rejects anything that is not a known mode', () => {
+    expect(isBuildMode('hologram')).toBe(false);
+    expect(isBuildMode('')).toBe(false);
+    expect(isBuildMode(undefined)).toBe(false);
+    expect(isBuildMode(null)).toBe(false);
+    expect(isBuildMode(42)).toBe(false);
+  });
+});
+
+describe('build mode restoration', () => {
+  it('does not read the persisted mode while the module is evaluated', async () => {
+    const storage = createStorage({ bolt_build_mode: 'website' });
+    const original = globalThis.localStorage;
+
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: storage,
+    });
+
+    try {
+      vi.resetModules();
+
+      const fresh = await import('~/lib/stores/buildMode');
+
+      /**
+       * The module is evaluated while the storage already holds a mode, but
+       * the store still starts at the default. Reading the storage here would
+       * make the server rendered markup and the hydrated markup disagree.
+       */
+      expect(fresh.buildModeStore.get()).toBe('app');
+
+      fresh.initBuildMode();
+
+      expect(fresh.buildModeStore.get()).toBe('website');
+    } finally {
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: original,
+      });
+
+      vi.resetModules();
+    }
+  });
+
+  it('keeps the current mode when nothing was persisted', () => {
+    const original = globalThis.localStorage;
+
+    buildModeStore.set('slides');
+
+    Object.defineProperty(globalThis, 'localStorage', {
+      configurable: true,
+      value: createStorage(),
+    });
+
+    try {
+      initBuildMode();
+
+      expect(buildModeStore.get()).toBe('slides');
+    } finally {
+      Object.defineProperty(globalThis, 'localStorage', {
+        configurable: true,
+        value: original,
+      });
+    }
   });
 });
 

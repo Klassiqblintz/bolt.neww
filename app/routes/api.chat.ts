@@ -1,4 +1,5 @@
 import { type ActionFunctionArgs } from '@remix-run/cloudflare';
+import { buildGenerationContext, DEFAULT_BUILD_MODE, isBuildMode } from '~/lib/buildModes';
 import { ModelUnavailableError, toAppError } from '~/lib/.server/llm/errors';
 import { MAX_RESPONSE_SEGMENTS, MAX_TOKENS } from '~/lib/.server/llm/constants';
 import { CONTINUE_PROMPT } from '~/lib/.server/llm/prompts';
@@ -31,11 +32,13 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
   let userManaged = false;
 
   try {
-    const { messages, modelId, provider } =
+    const { messages, modelId, provider, buildMode, planningMode } =
       (await request.json<{
         messages: Messages;
         modelId?: string;
         provider?: ProviderRequestSpec;
+        buildMode?: string;
+        planningMode?: boolean;
       }>()) ?? {};
 
     if (!Array.isArray(messages) || messages.length === 0) {
@@ -64,6 +67,16 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
       serverModelId: modelId,
     });
 
+    /**
+     * The build mode and the planning mode steer the generation. They become
+     * part of the system prompt, so the user's message stays exactly what the
+     * user typed and the conversation never shows the instructions.
+     */
+    const systemContext = buildGenerationContext(
+      isBuildMode(buildMode) ? buildMode : DEFAULT_BUILD_MODE,
+      planningMode === true,
+    );
+
     const options: StreamingOptions = {
       toolChoice: 'none',
       onFinish: async ({ text: content, finishReason }) => {
@@ -82,13 +95,18 @@ async function chatAction({ context, request }: ActionFunctionArgs) {
         messages.push({ role: 'assistant', content });
         messages.push({ role: 'user', content: CONTINUE_PROMPT });
 
-        const result = await streamText(messages, cloudflareEnv, { model: resolved.model }, options);
+        const result = await streamText(
+          messages,
+          cloudflareEnv,
+          { model: resolved.model, system: systemContext },
+          options,
+        );
 
         return stream.switchSource(result.toAIStream());
       },
     };
 
-    const result = await streamText(messages, cloudflareEnv, { model: resolved.model }, options);
+    const result = await streamText(messages, cloudflareEnv, { model: resolved.model, system: systemContext }, options);
 
     stream.switchSource(result.toAIStream());
 

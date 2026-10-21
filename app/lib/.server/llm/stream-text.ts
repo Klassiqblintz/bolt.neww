@@ -29,6 +29,23 @@ export interface StreamTextConfig {
 
   /** The model id of the server configured provider. */
   modelId?: string;
+
+  /**
+   * Additional instructions that are appended to the system prompt.
+   *
+   * This is how the build mode and the planning mode reach the model without
+   * ending up in the user's message.
+   */
+  system?: string;
+}
+
+/**
+ * Combines the base system prompt with the request specific instructions.
+ */
+function buildSystemPrompt(additional?: string): string {
+  const base = getSystemPrompt();
+
+  return additional ? `${base}\n\n${additional}` : base;
 }
 
 export function streamText(messages: Messages, env: Env, config: StreamTextConfig = {}, options?: StreamingOptions) {
@@ -36,11 +53,11 @@ export function streamText(messages: Messages, env: Env, config: StreamTextConfi
 
   return _streamText({
     model,
-    system: getSystemPrompt(),
     maxTokens: MAX_TOKENS,
     headers: getProviderHeaders(env, config),
     messages: convertToCoreMessages(messages),
     ...options,
+    system: buildSystemPrompt(config.system),
   });
 }
 
